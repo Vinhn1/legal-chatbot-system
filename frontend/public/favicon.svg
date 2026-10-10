@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Veritas Legal">
+  <!-- Biểu tượng cán cân pháp luật dùng màu navy của cổng tra cứu. -->
+  <rect width="64" height="64" rx="16" fill="#172554"/>
+  <path d="M32 12v36M17 22h30M32 48H20m12 0h12M17 22l-8 16h16l-8-16Zm30 0-8 16h16l-8-16Z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="18" r="3" fill="#fbbf24"/>
+</svg>

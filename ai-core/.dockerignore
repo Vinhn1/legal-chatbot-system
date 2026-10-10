@@ -1,0 +1,10 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+chroma_db/
+reports/
+temp_uploads/
+browser_profiles/
+.env
+.env.*

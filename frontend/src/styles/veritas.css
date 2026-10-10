@@ -1,0 +1,109 @@
+/* Đồng bộ bảng màu Veritas Navy & Warm Paper cho hệ thống Legal Chatbot Veritas */
+:root {
+  --primary: #1d4f88;
+  --primary-foreground: #ffffff;
+  --secondary: #e9edf2;
+  --secondary-foreground: #142747;
+  --accent: #f8f8f6;
+  --accent-foreground: #1d4f88;
+  --ring: #2c68ad;
+  --chart-1: #1d4f88;
+  --chart-2: #3568a1;
+  --sidebar-primary: #142747;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-ring: #2c68ad;
+
+  /* Veritas Design Palette Tokens */
+  --veritas-paper: #faf9f6;
+  --veritas-card-bg: #ffffff;
+  --veritas-navy-950: #0f1e36;
+  --veritas-navy-900: #142747;
+  --veritas-navy-800: #182d4f;
+  --veritas-navy-700: #1c3457;
+  --veritas-blue-primary: #1d4f88;
+  --veritas-blue-light: #2c68ad;
+  --veritas-blue-soft: #eef4f9;
+  --veritas-gold-dark: #785c32;
+  --veritas-gold: #a17842;
+  --veritas-gold-light: #c29a5b;
+  --veritas-gold-surface: #faf7f0;
+  --veritas-border: #d3dbe4;
+  --veritas-border-warm: #e5ddce;
+}
+
+/* Tối ưu thanh cuộn bảng và văn bản pháp luật dài */
+.board-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #bcc5d1 transparent;
+}
+
+.board-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.board-scroll::-webkit-scrollbar-thumb {
+  background-color: #bcc5d1;
+  border-radius: 9999px;
+}
+
+.board-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Các lớp hiệu ứng chuyển động định hướng (Motion Guidance) */
+@keyframes veritasFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes veritasSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes veritasPulseSubtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+
+.animate-fade-in-up {
+  animation: veritasFadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-right {
+  animation: veritasSlideInRight 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-subtle {
+  animation: veritasPulseSubtle 2.4s ease-in-out infinite;
+}
+
+/* Tôn trọng người dùng bật chế độ giảm chuyển động theo tiêu chuẩn WCAG */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

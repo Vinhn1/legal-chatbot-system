@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legal AI Chatbot - Trung Tâm Tích Hợp Mã Nhúng Website</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #005BAA;
+      --primary-hover: #004685;
+      --primary-light: #e6f1fb;
+      --accent: #00A3E0;
+      --red: #E30613;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--slate-50);
+      color: var(--slate-900);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Top Navbar */
+    .navbar {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 24px;
+    }
+    .navbar-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .logo-badge .brand {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+    .logo-badge .sub {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      background: radial-gradient(circle at 80% 20%, rgba(0, 163, 224, 0.15), transparent 40%),
+                  radial-gradient(circle at 20% 80%, rgba(0, 91, 170, 0.12), transparent 45%),
+                  linear-gradient(180deg, #ffffff 0%, var(--slate-50) 100%);
+      padding: 70px 24px 60px;
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #ffffff;
+      border: 1px solid rgba(0, 91, 170, 0.2);
+      color: var(--primary);
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      box-shadow: 0 2px 8px rgba(0, 91, 170, 0.08);
+      margin-bottom: 24px;
+    }
+    .hero-tag .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      color: var(--slate-900);
+      max-width: 850px;
+      margin: 0 auto 20px;
+      line-height: 1.15;
+    }
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--slate-600);
+      max-width: 680px;
+      margin: 0 auto 36px;
+      font-weight: 500;
+    }
+    .hero-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, #004a8b 100%);
+      color: white;
+      padding: 14px 28px;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 91, 170, 0.3);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 91, 170, 0.4);
+    }
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+    .btn-secondary {
+      background: #ffffff;
+      color: var(--slate-800);
+      border: 1px solid var(--border-color);
+      padding: 14px 24px;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: var(--slate-100);
+      border-color: #cbd5e1;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1160px;
+      margin: 50px auto;
+      padding: 0 24px;
+    }
+
+    /* Interactive Demo Controls */
+    .demo-bar {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px 28px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      margin-bottom: 40px;
+    }
+    .demo-bar-title {
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: var(--slate-800);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip-btn {
+      background: var(--slate-50);
+      border: 1px solid var(--border-color);
+      color: var(--primary);
+      padding: 8px 14px;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .chip-btn:hover {
+      background: var(--primary-light);
+      border-color: rgba(0, 91, 170, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* Main Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-bottom: 40px;
+    }
+    @media (max-width: 860px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+      .hero h1 {
+        font-size: 2.2rem;
+      }
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--slate-900);
+    }
+    .card-desc {
+      font-size: 0.9rem;
+      color: var(--slate-600);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* Code Snippet Box */
+    .code-container {
+      background: var(--slate-900);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    .code-header {
+      background: #090d16;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+    }
+    .code-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .code-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .code-dot.red { background: #ef4444; }
+    .code-dot.yellow { background: #f59e0b; }
+    .code-dot.green { background: #10b981; }
+
+    .copy-btn {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .copy-btn:hover {
+      background: #0369a1;
+    }
+    pre {
+      padding: 20px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      overflow-x: auto;
+      line-height: 1.6;
+      background: #0c1222;
+    }
+
+    /* Features 4-col bento grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 50px;
+    }
+    .feature-box {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      transition: all 0.2s ease;
+    }
+    .feature-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+      border-color: #cbd5e1;
+    }
+    .feature-box h4 {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin-bottom: 8px;
+    }
+    .feature-box p {
+      font-size: 0.85rem;
+      color: var(--slate-600);
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 36px 24px;
+      text-align: center;
+      background: white;
+      color: var(--slate-500);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--slate-900);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s ease;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="navbar">
+    <div class="navbar-container">
+      <a href="#" class="logo-badge">
+        <span class="brand">Legal Chatbot AI</span>
+        <span class="sub">Widget Studio</span>
+      </a>
+      <div class="nav-actions">
+        <button class="btn-secondary" onclick="openWidgetChat()">
+          Mở Khung Chat
+        </button>
+        <button class="btn-primary" onclick="copySnippet()">
+          Sao Chép Mã Nhúng
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-tag">
+      <span class="dot"></span>
+      Legal Digital AI Platform 2026
+    </div>
+    <h1>Nhúng Trợ Lý Số AI Vào <span>Mọi Website</span> Trong 60 Giây</h1>
+    <p>
+      Tự động hóa 100% tra cứu văn bản quy phạm pháp luật Việt Nam, điều khoản, nghị định và thông tư 24/7.
+    </p>
+    <div class="hero-buttons">
+      <button class="btn-primary" onclick="openWidgetChat()">
+        Trải Nghiệm Chatbot Ngay
+      </button>
+      <button class="btn-secondary" onclick="document.getElementById('code-section').scrollIntoView({ behavior: 'smooth' })">
+        Xem Hướng Dẫn Tích Hợp
+      </button>
+    </div>
+  </section>
+
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- Interactive Demo Bar -->
+    <div class="demo-bar">
+      <div class="demo-bar-title">
+        Gợi ý câu hỏi thử nghiệm nhanh:
+      </div>
+      <div class="quick-chips">
+        <button class="chip-btn" onclick="openWidgetChat()">
+          Gói cước WiFi nào tốt?
+        </button>
+        <button class="chip-btn" onclick="openWidgetChat()">
+          Tất cả các gói 4G/5G hiện tại
+        </button>
+        <button class="chip-btn" onclick="openWidgetChat()">
+          Gói cước ngày ngắn hạn
+        </button>
+        <button class="chip-btn" onclick="openWidgetChat()">
+          Combo Internet + Camera
+        </button>
+      </div>
+    </div>
+
+    <!-- 2 Column Section -->
+    <div class="grid-2" id="code-section">
+      <!-- Left Card: Instructions -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&lt;/&gt;</div>
+          <div class="card-title">Tích hợp siêu tốc vào Website</div>
+        </div>
+        <p class="card-desc">
+          Chỉ cần chèn 1 dòng mã JavaScript vào trước thẻ đóng <code>&lt;/body&gt;</code> trên bất kỳ nền tảng nào: WordPress, Webflow, Landing Page, React hoặc HTML thuần.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: auto;">
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; font-weight: 600; color: var(--slate-700);">
+            <span style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800;">1</span>
+            Sao chép đoạn mã nhúng chuẩn bên phải.
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; font-weight: 600; color: var(--slate-700);">
+            <span style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800;">2</span>
+            Dán vào footer của website cần nhúng.
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; font-weight: 600; color: var(--slate-700);">
+            <span style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800;">3</span>
+            Bong bóng chat tự động xuất hiện và sẵn sàng 24/7.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Card: Code Snippet -->
+      <div class="code-container">
+        <div class="code-header">
+          <div class="code-dots">
+            <span class="code-dot red"></span>
+            <span class="code-dot yellow"></span>
+            <span class="code-dot green"></span>
+          </div>
+          <button class="copy-btn" id="copy-btn-el" onclick="copySnippet()">
+            Sao Chép Mã
+          </button>
+        </div>
+        <pre id="snippet-code">&lt;!-- Legal AI Chatbot Widget --&gt;
+&lt;script 
+  src="/widget.js" 
+  data-position="bottom-right"
+  data-theme-color="#005BAA"
+  data-bot-name="Trợ lý Pháp luật"
+  data-greeting="Xin chào! Tôi là Trợ lý AI hỗ trợ tra cứu văn bản pháp luật Việt Nam. Bạn cần tra cứu luật hay điều khoản nào hôm nay?"&gt;
+&lt;/script&gt;</pre>
+      </div>
+    </div>
+
+    <!-- 4 Features Bento Grid -->
+    <div class="features-grid">
+      <div class="feature-box">
+        <h4>Chính Xác & Không Bịa Đặt</h4>
+        <p>Kiểm soát sự thật nghiêm ngặt bằng công nghệ RAG, trích xuất chính xác 100% giá cước, tốc độ và cú pháp SMS từ cơ sở tri thức.</p>
+      </div>
+      <div class="feature-box">
+        <h4>Thu Thập Lead Tự Động</h4>
+        <p>Khéo léo ghi nhận Số điện thoại và nhu cầu khách hàng để chuyên viên kinh doanh liên hệ khảo sát hạ tầng và chốt hợp đồng.</p>
+      </div>
+      <div class="feature-box">
+        <h4>Tối Ưu Giao Diện Di Động</h4>
+        <p>Tự động bung toàn màn hình mượt mà trên smartphone, mang lại trải nghiệm tương tác tự nhiên và chuyên nghiệp nhất.</p>
+      </div>
+      <div class="feature-box">
+        <h4>Tùy Biến Thương Hiệu</h4>
+        <p>Dễ dàng thay đổi màu sắc chủ đạo, lời chào, vị trí góc màn hình và tên trợ lý ảo trực tiếp trên Admin Portal.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    &copy; 2026 Legal Chatbot System. Bản quyền thuộc về Hệ thống Tra cứu Pháp luật Việt Nam.
+  </footer>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast-msg">
+    Đã sao chép mã nhúng vào bộ nhớ tạm!
+  </div>
+
+  <!-- Dynamic JavaScript Widget Injection -->
+  <script>
+    (function() {
+      var themeColor = localStorage.getItem("legal_widget_theme_color") || "#E30613";
+      var botName = localStorage.getItem("legal_widget_bot_name") || "Trợ lý Pháp luật";
+      var greeting = localStorage.getItem("legal_widget_greeting") || "Xin chào! Tôi là Trợ lý AI hỗ trợ tra cứu văn bản pháp luật Việt Nam. Bạn cần tra cứu luật hay điều khoản nào hôm nay?";
+      var position = localStorage.getItem("legal_widget_position") || "bottom-right";
+
+      // Cập nhật màu sắc chủ đạo đồng bộ cho cả trang Demo
+      try {
+        document.documentElement.style.setProperty('--primary', themeColor);
+      } catch (_) {}
+
+      // Cập nhật đoạn code mẫu hiển thị trên giao diện demo
+      var snippetEl = document.getElementById("snippet-code");
+      if (snippetEl) {
+        snippetEl.innerText = '<!-- Legal AI Chatbot Widget -->\n<script\n  src="' + window.location.origin + '/widget.js"\n  data-position="' + position + '"\n  data-theme-color="' + themeColor + '"\n  data-bot-name="' + botName + '"\n  data-greeting="' + greeting + '"\n>\n</' + 'script>';
+      }
+
+      var s = document.createElement("script");
+      s.src = "/widget.js";
+      s.setAttribute("data-position", position);
+      s.setAttribute("data-theme-color", themeColor);
+      s.setAttribute("data-bot-name", botName);
+      s.setAttribute("data-greeting", greeting);
+      document.body.appendChild(s);
+    })();
+  </script>
+
+  <script>
+    function openWidgetChat() {
+      if (window.LegalWidget) {
+        window.LegalWidget.open();
+      }
+    }
+
+    function copySnippet() {
+      var code = document.getElementById("snippet-code").innerText;
+      navigator.clipboard.writeText(code).then(function() {
+        var toast = document.getElementById("toast-msg");
+        toast.classList.add("show");
+        var btn = document.getElementById("copy-btn-el");
+        btn.innerText = "Đã sao chép!";
+        setTimeout(function() {
+          toast.classList.remove("show");
+          btn.innerText = "Sao Chép Mã";
+        }, 2500);
+      });
+    }
+  </script>
+
+</body>
+</html>
