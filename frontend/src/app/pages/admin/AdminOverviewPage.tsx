@@ -230,20 +230,20 @@ export function AdminOverviewPage() {
             type="button"
             onClick={fetchOverviewData}
             disabled={isLoading}
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#cbd5df] bg-white px-4 text-sm font-bold text-[#142747] hover:bg-slate-50 transition-colors"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#cbd5df] dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 text-sm font-bold text-[#142747] dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
           >
-            <RefreshCw size={16} className={isLoading ? "animate-spin text-[#1d4f88]" : ""} />
+            <RefreshCw size={16} className={isLoading ? "animate-spin text-[#1d4f88] dark:text-sky-400" : ""} />
             Cập nhật
           </button>
           <Link
             to="/admin/ingest"
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#1d4f88] px-5 text-sm font-bold text-white shadow-sm transition-[background-color,transform] hover:bg-[#153b66] active:scale-[0.98]"
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#1d4f88] dark:bg-blue-600 px-5 text-sm font-bold text-white shadow-sm transition-[background-color,transform] hover:bg-[#153b66] dark:hover:bg-blue-700 active:scale-[0.98]"
           >
             <Plus size={17} /> Nạp tài liệu mới
           </Link>
           <Link
             to="/admin/chat"
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#cbd5df] bg-white px-5 text-sm font-bold text-[#142747] hover:bg-slate-50"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#cbd5df] dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 text-sm font-bold text-[#142747] dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
           >
             <MessageSquare size={17} /> Thử chatbot
           </Link>
@@ -355,7 +355,7 @@ export function AdminOverviewPage() {
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
                   activeQueueTab === tab.id
                     ? "bg-[#1d4f88] text-white"
-                    : "bg-[#f2f4f7] text-[#516278] hover:bg-[#e6ebf1]"
+                    : "bg-[#f2f4f7] text-[#516278] hover:bg-[#e6ebf1] dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                 }`}
               >
                 {tab.label}
@@ -366,15 +366,15 @@ export function AdminOverviewPage() {
           {/* Danh sách mục trong hàng đợi */}
           <div className="mt-4 space-y-3">
             {isLoading ? (
-              <div className="p-8 text-center text-xs text-[#718294]">
-                <Loader2 size={24} className="mx-auto animate-spin text-[#1d4f88] mb-2" />
+              <div className="p-8 text-center text-xs text-[#718294] dark:text-zinc-400">
+                <Loader2 size={24} className="mx-auto animate-spin text-[#1d4f88] dark:text-sky-400 mb-2" />
                 Đang đối chiếu dữ liệu hàng đợi...
               </div>
             ) : filteredQueue.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#d3dbe4] p-8 text-center">
+              <div className="rounded-xl border border-dashed border-[#d3dbe4] dark:border-zinc-800 p-8 text-center">
                 <CheckCircle2 size={32} className="mx-auto text-emerald-600 mb-2" />
-                <h3 className="text-sm font-bold text-[#142747]">Hàng đợi sạch, không có mục tồn đọng</h3>
-                <p className="mt-1 text-xs text-[#718294]">
+                <h3 className="text-sm font-bold text-[#142747] dark:text-zinc-100">Hàng đợi sạch, không có mục tồn đọng</h3>
+                <p className="mt-1 text-xs text-[#718294] dark:text-zinc-400">
                   Tất cả văn bản và câu trả lời hiện tại đều có căn cứ pháp lý rõ ràng.
                 </p>
               </div>
@@ -382,17 +382,17 @@ export function AdminOverviewPage() {
               filteredQueue.map((item) => (
                 <div
                   key={item.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[#e2e7ec] bg-[#fafaf9] p-4 transition-all hover:border-[#1d4f88]/40 hover:bg-white"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[#e2e7ec] bg-[#fafaf9] dark:bg-zinc-900/90 dark:border-zinc-800 p-4 transition-all hover:border-[#1d4f88]/40 hover:bg-white dark:hover:bg-zinc-800/80"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="rounded bg-[#eef4f9] px-2 py-0.5 text-[11px] font-bold text-[#1d4f88]">
+                      <span className="rounded bg-[#eef4f9] dark:bg-sky-950/70 dark:text-sky-300 px-2 py-0.5 text-[11px] font-bold text-[#1d4f88]">
                         {item.id}
                       </span>
-                      <h3 className="text-sm font-bold text-[#142747] truncate">{item.title}</h3>
+                      <h3 className="text-sm font-bold text-[#142747] dark:text-zinc-100 truncate">{item.title}</h3>
                     </div>
-                    <p className="mt-1 text-xs text-[#a14f41] font-semibold">{item.reason}</p>
-                    <div className="mt-2 flex items-center gap-3 text-xs text-[#718294]">
+                    <p className="mt-1 text-xs text-[#a14f41] dark:text-rose-400 font-semibold">{item.reason}</p>
+                    <div className="mt-2 flex items-center gap-3 text-xs text-[#718294] dark:text-zinc-400">
                       <span>Nguồn: {item.issuer}</span>
                       <span>•</span>
                       <span>{item.date}</span>
@@ -401,7 +401,7 @@ export function AdminOverviewPage() {
 
                   <Link
                     to="/admin/documents"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#cbd5df] bg-white px-3.5 py-2 text-xs font-bold text-[#142747] hover:bg-slate-50 transition-colors shrink-0"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#cbd5df] dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-2 text-xs font-bold text-[#142747] dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors shrink-0"
                   >
                     Kiểm tra <ArrowRight size={14} />
                   </Link>
@@ -414,34 +414,34 @@ export function AdminOverviewPage() {
         {/* Cột 2: Chỉ số kiểm duyệt và hoạt động gần đây. */}
         <div className="min-w-0 space-y-6 xl:col-span-5">
           {/* Dùng số liệu kiểm duyệt thực tế và lối tắt nghiệp vụ. */}
-          <section className="min-w-0 rounded-2xl border border-[#d3dbe4] bg-white p-5 sm:p-6 shadow-xs">
-            <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#8a785d] mb-1">
+          <section className="min-w-0 rounded-2xl border border-[#d3dbe4] dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 sm:p-6 shadow-xs">
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#8a785d] dark:text-amber-400/90 mb-1">
               KIỂM DUYỆT NGHIỆP VỤ
             </div>
-            <h2 className="font-editorial text-xl font-semibold text-[#142747]">
+            <h2 className="font-editorial text-xl font-semibold text-[#142747] dark:text-zinc-100">
               Câu hỏi đã rà soát
             </h2>
-            <p className="mt-3 text-3xl font-bold text-[#1d4f88]">{reviewSummary.total ? `${Math.round(reviewSummary.reviewed / reviewSummary.total * 100)}%` : "—"}</p>
-            <p className="mt-1 text-xs text-[#718294]">{reviewSummary.reviewed}/{reviewSummary.total} câu hỏi được đánh dấu đã duyệt trên thiết bị này</p>
+            <p className="mt-3 text-3xl font-bold text-[#1d4f88] dark:text-sky-400">{reviewSummary.total ? `${Math.round(reviewSummary.reviewed / reviewSummary.total * 100)}%` : "—"}</p>
+            <p className="mt-1 text-xs text-[#718294] dark:text-zinc-400">{reviewSummary.reviewed}/{reviewSummary.total} câu hỏi được đánh dấu đã duyệt trên thiết bị này</p>
             <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-              <Link to="/admin/ingest" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 p-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800/60">Nạp tài liệu mới</Link>
-              <Link to="/admin/chat" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 p-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800/60">Thử chatbot</Link>
-              <Link to="/admin/conversations" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 p-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800/60">Rà soát hội thoại</Link>
+              <Link to="/admin/ingest" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 bg-white dark:bg-zinc-800/80 p-3 text-sm font-semibold text-[#142747] dark:text-zinc-100 hover:bg-slate-50 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white transition-colors">Nạp tài liệu mới</Link>
+              <Link to="/admin/chat" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 bg-white dark:bg-zinc-800/80 p-3 text-sm font-semibold text-[#142747] dark:text-zinc-100 hover:bg-slate-50 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white transition-colors">Thử chatbot</Link>
+              <Link to="/admin/conversations" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 bg-white dark:bg-zinc-800/80 p-3 text-sm font-semibold text-[#142747] dark:text-zinc-100 hover:bg-slate-50 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white transition-colors">Rà soát hội thoại</Link>
             </div>
           </section>
 
           {/* Hoạt động gần đây */}
-          <section className="min-w-0 rounded-2xl border border-[#d3dbe4] bg-white p-5 sm:p-6 shadow-xs">
-            <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#8a785d] mb-1">
+          <section className="min-w-0 rounded-2xl border border-[#d3dbe4] dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 sm:p-6 shadow-xs">
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#8a785d] dark:text-amber-400/90 mb-1">
               NHẬT KÝ THỜI GIAN THỰC
             </div>
-            <h2 className="font-editorial text-xl font-semibold text-[#142747]">
+            <h2 className="font-editorial text-xl font-semibold text-[#142747] dark:text-zinc-100">
               Hoạt động gần đây
             </h2>
 
             <div className="mt-4 space-y-3">
               {recentActivities.length === 0 ? (
-                <p className="text-xs text-[#718294] italic text-center py-4">
+                <p className="text-xs text-[#718294] dark:text-zinc-400 italic text-center py-4">
                   Chưa có hoạt động nạp văn bản hoặc tra cứu nào được ghi nhận.
                 </p>
               ) : (
@@ -450,18 +450,18 @@ export function AdminOverviewPage() {
                     <span
                       className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg font-bold text-[11px] mt-0.5 ${
                         act.status === "success"
-                          ? "bg-emerald-50 text-emerald-700"
+                          ? "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300"
                           : act.status === "warning"
-                          ? "bg-amber-50 text-amber-700"
-                          : "bg-blue-50 text-blue-700"
+                          ? "bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300"
+                          : "bg-blue-50 dark:bg-sky-950/70 text-blue-700 dark:text-sky-300"
                       }`}
                     >
                       <CheckCircle2 size={14} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="font-bold text-[#142747]">{act.action}</div>
-                      <div className="text-[#56677c] truncate mt-0.5">{act.detail}</div>
-                      <div className="text-[#8a98a8] text-[11px] mt-0.5">{act.time}</div>
+                      <div className="font-bold text-[#142747] dark:text-zinc-100">{act.action}</div>
+                      <div className="text-[#56677c] dark:text-zinc-300 truncate mt-0.5">{act.detail}</div>
+                      <div className="text-[#8a98a8] dark:text-zinc-400 text-[11px] mt-0.5">{act.time}</div>
                     </div>
                   </div>
                 ))

@@ -144,6 +144,7 @@ body:not(:has(.admin-shell)) [class~="text-[#142747]"],
 /* 3. Các thẻ, bảng và vùng chứa nội dung màu sáng chuyển sang đen trung tính (#121212) */
 .dark .admin-shell [class~="bg-white"],
 .dark .admin-shell [class*="bg-[#fafafa]"],
+.dark .admin-shell [class*="bg-[#fafaf9]"],
 .dark .admin-shell [class*="bg-[#f8f9fa]"],
 .dark .admin-shell [class*="bg-[#fcfcfb]"],
 .dark .admin-shell [class*="bg-[#faf9f6]"],
@@ -151,11 +152,32 @@ body:not(:has(.admin-shell)) [class~="text-[#142747]"],
 .dark .admin-shell [class*="bg-[#f4f8fc]"],
 .dark .admin-shell [class*="bg-[#fbfbfa]"],
 .dark .admin-shell [class*="bg-[#faf7f0]"],
+.dark .admin-shell [class*="bg-[#f2f4f7]"],
 .dark .admin-shell .admin-card,
 .dark [role="dialog"] [class~="bg-white"],
+.dark [role="dialog"] [class*="bg-[#fafafa]"],
+.dark [role="dialog"] [class*="bg-[#fafaf9]"],
+.dark [role="dialog"] [class*="bg-[#f8f9fa]"],
+.dark [role="dialog"] [class*="bg-[#fcfcfb]"],
 .dark [data-slot="sheet-content"] [class~="bg-white"],
-.dark [data-slot="dialog-content"] [class~="bg-white"] {
+.dark [data-slot="sheet-content"] [class*="bg-[#fafafa]"],
+.dark [data-slot="sheet-content"] [class*="bg-[#fafaf9]"],
+.dark [data-slot="sheet-content"] [class*="bg-[#f8f9fa]"],
+.dark [data-slot="sheet-content"] [class*="bg-[#fcfcfb]"],
+.dark [data-slot="sheet-content"] [class*="bg-slate-50"],
+.dark [data-slot="dialog-content"] [class~="bg-white"],
+.dark [data-slot="dialog-content"] [class*="bg-[#fafafa]"],
+.dark [data-slot="dialog-content"] [class*="bg-[#fafaf9]"],
+.dark [data-slot="dialog-content"] [class*="bg-[#f8f9fa]"] {
   background-color: #121212 !important;
+}
+
+/* Thẻ lồng cấp 2 bên trong dialog hoặc sheet để tạo độ sâu tương phản (Subtle Card Depth) */
+.dark [data-slot="sheet-content"] [class*="bg-[#f8f9fa]"],
+.dark [data-slot="sheet-content"] [class*="bg-[#fafafa]"],
+.dark [data-slot="dialog-content"] [class*="bg-[#f8f9fa]"],
+.dark [data-slot="dialog-content"] [class*="bg-[#fafafa]"] {
+  background-color: #18181b !important;
 }
 
 /* 4. Chuẩn hóa các lớp Slate xanh lam sang đen than trung tính */
@@ -236,6 +258,7 @@ html.dark .admin-shell [class*="bg-[#f0f5fa]"] * {
 .dark .admin-shell [class*="border-[#d8dee5]"],
 .dark .admin-shell [class*="border-[#cbd5df]"],
 .dark .admin-shell [class*="border-[#e2e7ec]"],
+.dark .admin-shell [class*="border-[#e8ecef]"],
 .dark .admin-shell [class*="border-[#edf1f4]"],
 .dark .admin-shell [class*="border-[#c8daec]"],
 .dark .admin-shell [class*="border-[#c9daea]"],
@@ -243,13 +266,20 @@ html.dark .admin-shell [class*="bg-[#f0f5fa]"] * {
 .dark .admin-shell [class*="border-slate-200"],
 .dark .admin-shell [class*="border-slate-300"],
 .dark .admin-shell [class*="dark:border-slate-800"],
-.dark .admin-shell [class*="dark:border-slate-700"] {
+.dark .admin-shell [class*="dark:border-slate-700"],
+.dark [data-slot="sheet-content"] [class*="border-[#"],
+.dark [data-slot="sheet-content"] [class*="border-slate"],
+.dark [data-slot="dialog-content"] [class*="border-[#"],
+.dark [data-slot="dialog-content"] [class*="border-slate"],
+.dark [role="dialog"] [class*="border-[#"],
+.dark [role="dialog"] [class*="border-slate"] {
   border-color: #27272a !important;
 }
 
 .dark .admin-shell [class*="divide-[#edf1f4]"] > * + *,
 .dark .admin-shell [class*="divide-[#e2e7ec]"] > * + *,
-.dark .admin-shell [class*="divide-slate-200"] > * + * {
+.dark .admin-shell [class*="divide-slate-200"] > * + *,
+.dark [data-slot="sheet-content"] [class*="divide-[#"] > * + * {
   border-color: #27272a !important;
 }
 
@@ -260,12 +290,19 @@ html.dark .admin-shell [class*="bg-[#f0f5fa]"] * {
 .dark .admin-shell [class*="text-[#182d4f]"],
 .dark .admin-shell [class*="text-[#1c3457]"],
 .dark .admin-shell [class*="text-[#334155]"],
+.dark .admin-shell [class*="text-[#415367]"],
 .dark .admin-shell [class*="text-[#45576d]"],
 .dark .admin-shell [class*="text-slate-900"],
 .dark .admin-shell [class*="text-slate-950"],
 .dark [role="dialog"] [class*="text-[#142747]"],
+.dark [role="dialog"] [class*="text-[#334155]"],
+.dark [role="dialog"] [class*="text-[#415367]"],
 .dark [data-slot="sheet-content"] [class*="text-[#142747]"],
-.dark [data-slot="dialog-content"] [class*="text-[#142747]"] {
+.dark [data-slot="sheet-content"] [class*="text-[#334155]"],
+.dark [data-slot="sheet-content"] [class*="text-[#415367]"],
+.dark [data-slot="dialog-content"] [class*="text-[#142747]"],
+.dark [data-slot="dialog-content"] [class*="text-[#334155]"],
+.dark [data-slot="dialog-content"] [class*="text-[#415367]"] {
   color: #f4f4f5 !important;
 }
 
@@ -282,22 +319,41 @@ html.dark .admin-shell [class*="bg-[#f0f5fa]"] * {
 .dark .admin-shell [class*="text-slate-500"],
 .dark .admin-shell [class*="text-slate-600"],
 .dark [role="dialog"] [class*="text-[#718294]"],
+.dark [role="dialog"] [class*="text-[#66778c]"],
+.dark [role="dialog"] [class*="text-[#6a7b8e]"],
+.dark [role="dialog"] [class*="text-[#56677c]"],
 .dark [data-slot="sheet-content"] [class*="text-[#718294]"],
-.dark [data-slot="dialog-content"] [class*="text-[#718294]"] {
+.dark [data-slot="sheet-content"] [class*="text-[#66778c]"],
+.dark [data-slot="sheet-content"] [class*="text-[#6a7b8e]"],
+.dark [data-slot="sheet-content"] [class*="text-[#56677c]"],
+.dark [data-slot="dialog-content"] [class*="text-[#718294]"],
+.dark [data-slot="dialog-content"] [class*="text-[#66778c]"],
+.dark [data-slot="dialog-content"] [class*="text-[#6a7b8e]"] {
   color: #a1a1aa !important;
 }
 
 .dark .admin-shell [class*="text-[#8a785d]"],
 .dark .admin-shell [class*="text-[#8b795f]"],
 .dark .admin-shell [class*="text-[#a17842]"],
-.dark .admin-shell [class*="text-[#c29a5b]"] {
+.dark .admin-shell [class*="text-[#c29a5b]"],
+.dark [data-slot="sheet-content"] [class*="text-[#8a785d]"],
+.dark [data-slot="sheet-content"] [class*="text-[#8b795f]"],
+.dark [role="dialog"] [class*="text-[#8a785d]"] {
   color: #d4b483 !important;
 }
 
 .dark .admin-shell [class*="text-[#1d4f88]"],
 .dark .admin-shell [class*="text-[#2c68ad]"],
-.dark .admin-shell [class*="text-[#3568a1]"] {
+.dark .admin-shell [class*="text-[#3568a1]"],
+.dark [data-slot="sheet-content"] [class*="text-[#1d4f88]"],
+.dark [data-slot="sheet-content"] [class*="text-[#2c68ad]"],
+.dark [role="dialog"] [class*="text-[#1d4f88]"] {
   color: #60a5fa !important;
+}
+
+/* Bảo đảm đường link trong admin shell luôn có độ tương phản chuẩn */
+.dark .admin-shell a {
+  color: inherit;
 }
 
 /* 10. Biểu mẫu nhập liệu */
@@ -331,56 +387,91 @@ html.dark .admin-shell [class*="bg-[#f0f5fa]"] * {
 
 /* 11. Huy hiệu trạng thái (Badges / Status Pills) */
 .dark .admin-shell [class*="bg-slate-100"],
-.dark .admin-shell [class*="bg-[#f1f5f9]"] {
+.dark .admin-shell [class*="bg-[#f1f5f9]"],
+.dark [data-slot="sheet-content"] [class*="bg-slate-100"],
+.dark [data-slot="sheet-content"] [class*="bg-[#f1f5f9]"],
+.dark [role="dialog"] [class*="bg-slate-100"] {
   background-color: #27272a !important;
   color: #e4e4e7 !important;
   border-color: #3f3f46 !important;
 }
 
-.dark .admin-shell [class*="bg-amber-50"] {
+.dark .admin-shell [class*="bg-amber-50"],
+.dark [data-slot="sheet-content"] [class*="bg-amber-50"],
+.dark [role="dialog"] [class*="bg-amber-50"] {
   background-color: #38200c !important;
   color: #fde68a !important;
   border-color: #78350f !important;
 }
-.dark .admin-shell [class*="bg-amber-50"] * {
+.dark .admin-shell [class*="bg-amber-50"] *,
+.dark [data-slot="sheet-content"] [class*="bg-amber-50"] *,
+.dark [role="dialog"] [class*="bg-amber-50"] * {
   color: #fde68a !important;
 }
 
 .dark .admin-shell [class*="bg-emerald-50"],
-.dark .admin-shell [class*="bg-emerald-100"] {
+.dark .admin-shell [class*="bg-emerald-100"],
+.dark [data-slot="sheet-content"] [class*="bg-emerald-50"],
+.dark [role="dialog"] [class*="bg-emerald-50"] {
   background-color: #063c2c !important;
   color: #a7f3d0 !important;
   border-color: #065f46 !important;
 }
-.dark .admin-shell [class*="bg-emerald-50"] * {
+.dark .admin-shell [class*="bg-emerald-50"] *,
+.dark [data-slot="sheet-content"] [class*="bg-emerald-50"] *,
+.dark [role="dialog"] [class*="bg-emerald-50"] * {
   color: #a7f3d0 !important;
 }
 
-.dark .admin-shell [class*="bg-rose-50"] {
+.dark .admin-shell [class*="bg-rose-50"],
+.dark [data-slot="sheet-content"] [class*="bg-rose-50"],
+.dark [role="dialog"] [class*="bg-rose-50"] {
   background-color: #3b0d18 !important;
   color: #fecdd3 !important;
   border-color: #881337 !important;
 }
-.dark .admin-shell [class*="bg-rose-50"] * {
+.dark .admin-shell [class*="bg-rose-50"] *,
+.dark [data-slot="sheet-content"] [class*="bg-rose-50"] *,
+.dark [role="dialog"] [class*="bg-rose-50"] * {
   color: #fecdd3 !important;
 }
 
-.dark .admin-shell [class*="bg-sky-50"] {
+.dark .admin-shell [class*="bg-sky-50"],
+.dark [data-slot="sheet-content"] [class*="bg-sky-50"],
+.dark [role="dialog"] [class*="bg-sky-50"] {
   background-color: #082f49 !important;
   color: #7dd3fc !important;
   border-color: #0369a1 !important;
 }
-.dark .admin-shell [class*="bg-sky-50"] * {
+.dark .admin-shell [class*="bg-sky-50"] *,
+.dark [data-slot="sheet-content"] [class*="bg-sky-50"] *,
+.dark [role="dialog"] [class*="bg-sky-50"] * {
   color: #7dd3fc !important;
 }
 
-.dark .admin-shell [class*="bg-indigo-50"] {
+.dark .admin-shell [class*="bg-indigo-50"],
+.dark [data-slot="sheet-content"] [class*="bg-indigo-50"],
+.dark [role="dialog"] [class*="bg-indigo-50"] {
   background-color: #1e1b4b !important;
   color: #c7d2fe !important;
   border-color: #3730a3 !important;
 }
-.dark .admin-shell [class*="bg-indigo-50"] * {
+.dark .admin-shell [class*="bg-indigo-50"] *,
+.dark [data-slot="sheet-content"] [class*="bg-indigo-50"] *,
+.dark [role="dialog"] [class*="bg-indigo-50"] * {
   color: #c7d2fe !important;
+}
+
+.dark .admin-shell [class*="bg-[#eef4f9]"],
+.dark [data-slot="sheet-content"] [class*="bg-[#eef4f9]"],
+.dark [role="dialog"] [class*="bg-[#eef4f9]"] {
+  background-color: #1e293b !important;
+  color: #93c5fd !important;
+}
+.dark .admin-shell [class*="bg-[#eef4f9]"] *,
+.dark [data-slot="sheet-content"] [class*="bg-[#eef4f9]"] *,
+.dark [role="dialog"] [class*="bg-[#eef4f9]"] * {
+  color: #93c5fd !important;
 }
 
 .dark .admin-shell [class*="bg-[#f4eddf]"] {
@@ -392,20 +483,30 @@ html.dark .admin-shell [class*="bg-[#f0f5fa]"] * {
   color: #fde68a !important;
 }
 
+/* Nút bấm tab và thẻ liên kết không kích hoạt */
+.dark .admin-shell [class*="bg-[#f2f4f7]"] {
+  background-color: #27272a !important;
+  color: #d4d4d8 !important;
+}
+.dark .admin-shell [class*="bg-[#f2f4f7]"]:hover {
+  background-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
 /* 12. Modal / Dialog / Sheet / Popover nổi */
 .dark [role="dialog"],
 .dark [data-slot="sheet-content"],
 .dark [data-slot="dialog-content"],
 .dark [role="listbox"],
 .dark [data-radix-popper-content-wrapper] > div {
-  background-color: #121212 !important;
+  background-color: #0e0e11 !important;
   border-color: #27272a !important;
   color: #f4f4f5 !important;
 }
 
 .dark [data-slot="sheet-header"],
 .dark [data-slot="dialog-header"] {
-  background-color: #161618 !important;
+  background-color: #141417 !important;
   border-color: #27272a !important;
 }
 

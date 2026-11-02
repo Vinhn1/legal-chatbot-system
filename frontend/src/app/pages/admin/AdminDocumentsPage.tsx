@@ -64,11 +64,11 @@ type ApiDocument = Partial<LegalDocumentItem> & {
 };
 // Cấu hình huy hiệu và biểu tượng trực quan cho từng nguồn nạp
 const sourceBadges: Record<SourceKind, { label: string; className: string; Icon: typeof FileText }> = {
-  pdf: { label: "Tệp PDF", className: "border-rose-200 bg-rose-50 text-rose-800", Icon: FileText },
-  docx: { label: "Tệp DOCX", className: "border-indigo-200 bg-indigo-50 text-indigo-800", Icon: FileText },
-  txt: { label: "Văn bản TXT", className: "border-slate-300 bg-slate-100 text-slate-800", Icon: FileText },
-  web: { label: "Trang Web", className: "border-sky-200 bg-sky-50 text-sky-800", Icon: Globe },
-  unknown: { label: "Chưa rõ", className: "border-slate-300 bg-white text-slate-700", Icon: FileQuestion },
+  pdf: { label: "Tệp PDF", className: "border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300", Icon: FileText },
+  docx: { label: "Tệp DOCX", className: "border-indigo-200 dark:border-indigo-900/60 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300", Icon: FileText },
+  txt: { label: "Văn bản TXT", className: "border-slate-300 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200", Icon: FileText },
+  web: { label: "Trang Web", className: "border-sky-200 dark:border-sky-900/60 bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300", Icon: Globe },
+  unknown: { label: "Chưa rõ", className: "border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-300", Icon: FileQuestion },
 };
 const effectiveStatusLabels: Record<LegalDocumentItem["effectiveStatus"], string> = {
   active: "Còn hiệu lực", expired: "Hết hiệu lực",
@@ -391,14 +391,14 @@ export function AdminDocumentsPage() {
             type="button"
             onClick={fetchDocuments}
             disabled={isLoading}
-            className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-xl border border-[#cbd5df] bg-white px-4 text-sm font-bold text-[#142747] hover:bg-slate-50 transition-colors"
+            className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-xl border border-[#cbd5df] dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 text-sm font-bold text-[#142747] dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
           >
-            <RefreshCw size={16} className={isLoading ? "animate-spin text-[#1d4f88]" : ""} />
+            <RefreshCw size={16} className={isLoading ? "animate-spin text-[#1d4f88] dark:text-sky-400" : ""} />
             Làm mới
           </button>
           <Link
             to="/admin/ingest"
-            className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#1d4f88] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#153b66] transition-colors"
+            className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#1d4f88] dark:bg-blue-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-[#153b66] dark:hover:bg-blue-700 transition-colors"
           >
             <Plus size={17} /> Nạp tài liệu
           </Link>
@@ -407,20 +407,20 @@ export function AdminDocumentsPage() {
 
       {/* Thanh Tìm kiếm & Bộ lọc nâng cao */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-xl border border-[#cbd5df] bg-white px-3.5 py-2.5 shadow-2xs transition-all focus-within:border-[#1d4f88] focus-within:ring-2 focus-within:ring-[#1d4f88]/15">
-          <Search size={17} className="text-[#7c8b9d] shrink-0" />
+        <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-xl border border-[#cbd5df] dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-2.5 shadow-2xs transition-all focus-within:border-[#1d4f88] dark:focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-[#1d4f88]/15 dark:focus-within:ring-sky-500/20">
+          <Search size={17} className="text-[#7c8b9d] dark:text-zinc-400 shrink-0" />
           <input
             type="text"
             placeholder="Tìm theo số hiệu, tên văn bản, cơ quan..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#142747] outline-none placeholder:text-[#9aa5b2]"
+            className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#142747] dark:text-zinc-100 outline-none placeholder:text-[#9aa5b2] dark:placeholder:text-zinc-500"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => setSearchTerm("")}
-              className="text-slate-400 hover:text-slate-600 transition-colors p-0.5 rounded-full hover:bg-slate-100"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800"
               aria-label="Xóa từ khóa tìm kiếm"
             >
               <X size={15} />
@@ -486,33 +486,33 @@ export function AdminDocumentsPage() {
       )}
 
       {/* Phần chính: Bảng danh sách văn bản hiển thị toàn màn hình (Full-Width) */}
-      <div className="w-full rounded-2xl border border-[#d3dbe4] bg-white shadow-xs overflow-hidden">
+      <div className="w-full rounded-2xl border border-[#d3dbe4] dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-xs overflow-hidden">
         {isLoading ? (
-          <div className="p-12 text-center text-[#66778c]">
-            <Loader2 size={32} className="mx-auto animate-spin text-[#1d4f88] mb-3" />
+          <div className="p-12 text-center text-[#66778c] dark:text-zinc-400">
+            <Loader2 size={32} className="mx-auto animate-spin text-[#1d4f88] dark:text-sky-400 mb-3" />
             <p className="text-sm font-semibold">Đang tải danh sách tài liệu từ cơ sở dữ liệu...</p>
           </div>
         ) : documents.length === 0 ? (
           <div className="p-12 text-center">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#eef4f9] text-[#1d4f88] mb-4">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#eef4f9] dark:bg-zinc-800 text-[#1d4f88] dark:text-sky-400 mb-4">
               <BookOpen size={30} />
             </div>
-            <h3 className="text-lg font-bold text-[#142747]">Kho văn bản hiện đang trống</h3>
-            <p className="mt-1 text-sm text-[#66778c] max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-[#142747] dark:text-zinc-100">Kho văn bản hiện đang trống</h3>
+            <p className="mt-1 text-sm text-[#66778c] dark:text-zinc-400 max-w-md mx-auto">
               Chưa có văn bản quy phạm pháp luật nào được nạp vào hệ thống. Hãy tải lên tệp văn bản đầu tiên để kích hoạt pipeline tra cứu AI.
             </p>
             <div className="mt-6">
               <Link
                 to="/admin/ingest"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#1d4f88] px-6 text-sm font-bold text-white shadow-sm hover:bg-[#153b66] transition-colors"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#1d4f88] dark:bg-blue-600 px-6 text-sm font-bold text-white shadow-sm hover:bg-[#153b66] dark:hover:bg-blue-700 transition-colors"
               >
                 <Plus size={17} /> Nạp tài liệu mới ngay
               </Link>
             </div>
           </div>
         ) : filteredDocs.length === 0 ? (
-          <div className="p-12 text-center text-[#66778c]">
-            <FileText size={32} className="mx-auto text-[#9aa5b2] mb-3" />
+          <div className="p-12 text-center text-[#66778c] dark:text-zinc-400">
+            <FileText size={32} className="mx-auto text-[#9aa5b2] dark:text-zinc-500 mb-3" />
             <p className="text-sm font-semibold">Không tìm thấy tài liệu phù hợp với bộ lọc hiện tại.</p>
             <button
               type="button"
@@ -522,16 +522,16 @@ export function AdminDocumentsPage() {
                 setStatusFilter("all");
                 setSourceFilter("all");
               }}
-              className="mt-3 text-xs font-bold text-[#1d4f88] underline"
+              className="mt-3 text-xs font-bold text-[#1d4f88] dark:text-sky-400 underline"
             >
               Xóa bộ lọc
             </button>
           </div>
         ) : (
           <div className="overflow-x-auto board-scroll">
-            <p className="px-5 py-2 text-xs text-[#66778c] lg:hidden">Vuốt ngang để xem đầy đủ các cột tài liệu.</p>
+            <p className="px-5 py-2 text-xs text-[#66778c] dark:text-zinc-400 lg:hidden">Vuốt ngang để xem đầy đủ các cột tài liệu.</p>
             <table className="w-full min-w-[880px] text-left text-xs sm:text-sm">
-              <thead className="border-b border-[#e2e7ec] bg-[#f8f9fa] text-xs font-bold uppercase tracking-wider text-[#6a7b8e]">
+              <thead className="border-b border-[#e2e7ec] dark:border-zinc-800 bg-[#f8f9fa] dark:bg-[#161618] text-xs font-bold uppercase tracking-wider text-[#6a7b8e] dark:text-zinc-400">
                 <tr>
                   <th className="min-w-[320px] py-3.5 px-5">Tài liệu & Trích yếu</th>
                   <th className="py-3.5 px-4">Hình thức nạp</th>
@@ -540,7 +540,7 @@ export function AdminDocumentsPage() {
                   <th className="py-3.5 px-5 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#edf1f4]">
+              <tbody className="divide-y divide-[#edf1f4] dark:divide-zinc-800/80">
                 {filteredDocs.map((doc) => {
                   const isSelected = displayedDoc?.id === doc.id;
                   const sourceBadge = sourceBadges[getSourceKind(doc)];
@@ -551,16 +551,16 @@ export function AdminDocumentsPage() {
                       onClick={() => openDocumentDetail(doc)}
                       className={`cursor-pointer transition-colors ${
                         isSelected && isDetailOpen
-                          ? "bg-[#f0f5fa] dark:bg-zinc-800"
+                          ? "bg-[#f0f5fa] dark:bg-zinc-800/90 text-white"
                           : "hover:bg-slate-50 dark:hover:bg-zinc-800/60"
                       }`}
                     >
                       <td className="py-4 px-5">
-                        <div className="min-w-0 break-words font-bold leading-snug text-[#142747] text-sm sm:text-base">
+                        <div className="min-w-0 break-words font-bold leading-snug text-[#142747] dark:text-zinc-100 text-sm sm:text-base">
                           {doc.title}
                         </div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-[#718294]">
-                          <span className="font-semibold text-[#1d4f88]">{doc.docNumber}</span>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-[#718294] dark:text-zinc-400">
+                          <span className="font-semibold text-[#1d4f88] dark:text-sky-400">{doc.docNumber}</span>
                           <span>•</span>
                           <span>{doc.issuer}</span>
                           <span>•</span>
@@ -578,22 +578,22 @@ export function AdminDocumentsPage() {
 
                       <td className="py-4 px-4 whitespace-nowrap">
                         {doc.effectiveStatus === "active" && (
-                          <span className="inline-flex rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800">
+                          <span className="inline-flex rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/60 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300">
                             Còn hiệu lực
                           </span>
                         )}
                         {doc.effectiveStatus === "partially_expired" && (
-                          <span className="inline-flex rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-800">
+                          <span className="inline-flex rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/60 px-3 py-1 text-xs font-bold text-amber-800 dark:text-amber-300">
                             Hết một phần
                           </span>
                         )}
                         {doc.effectiveStatus === "expired" && (
-                          <span className="inline-flex rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-xs font-bold text-rose-800">
+                          <span className="inline-flex rounded-full bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 px-3 py-1 text-xs font-bold text-rose-800 dark:text-rose-300">
                             Hết hiệu lực
                           </span>
                         )}
                         {doc.effectiveStatus === "unknown" && (
-                          <span className="inline-flex rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+                          <span className="inline-flex rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 px-3 py-1 text-xs font-bold text-slate-700 dark:text-zinc-300">
                             Chưa xác minh
                           </span>
                         )}
@@ -601,12 +601,12 @@ export function AdminDocumentsPage() {
 
                       <td className="py-4 px-4 whitespace-nowrap">
                         {doc.pipelineStatus === "indexed" && (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-[#2f7560]">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-[#2f7560] dark:text-emerald-400">
                             <CheckCircle2 size={14} /> Đã chỉ mục
                           </span>
                         )}
                         {doc.pipelineStatus === "pending_review" && (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-[#a17842]">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-[#a17842] dark:text-amber-400">
                             <Clock size={14} /> Chờ duyệt
                           </span>
                         )}
@@ -620,7 +620,7 @@ export function AdminDocumentsPage() {
                             openDocumentDetail(doc);
                           }}
                           title="Xem chi tiết"
-                          className="rounded-lg p-2 text-[#1d4f88] hover:bg-[#eef4f9] transition-colors"
+                          className="rounded-lg p-2 text-[#1d4f88] dark:text-sky-400 hover:bg-[#eef4f9] dark:hover:bg-zinc-800 transition-colors"
                         >
                           <Eye size={17} />
                         </button>
@@ -632,7 +632,7 @@ export function AdminDocumentsPage() {
                           }}
                           disabled={isDeleting}
                           title="Xóa tài liệu"
-                          className="rounded-lg p-2 text-rose-600 hover:bg-rose-50 transition-colors ml-1"
+                          className="rounded-lg p-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors ml-1"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -650,13 +650,13 @@ export function AdminDocumentsPage() {
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-xl md:max-w-2xl p-0 flex flex-col gap-0 border-l border-[#d3dbe4] bg-white shadow-2xl"
+          className="w-full sm:max-w-xl md:max-w-2xl p-0 flex flex-col gap-0 border-l border-[#d3dbe4] dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xl"
         >
           {displayedDoc ? (
-            <div className="flex flex-col h-full">
-              <SheetHeader className="p-5 sm:p-6 border-b border-[#eef1f4] bg-slate-50/70">
+            <div className="flex flex-col h-full bg-white dark:bg-zinc-950 text-[#142747] dark:text-zinc-100">
+              <SheetHeader className="p-5 sm:p-6 border-b border-[#eef1f4] dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/90">
                 <div className="flex items-center justify-between pr-7">
-                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#8a785d]">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#8a785d] dark:text-amber-400/90">
                     Chi tiết nguồn văn bản
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -670,57 +670,57 @@ export function AdminDocumentsPage() {
                         </span>
                       );
                     })()}
-                    <span className="rounded-md bg-[#eef4f9] px-2 py-0.5 text-xs font-bold text-[#1d4f88]">
+                    <span className="rounded-md bg-[#eef4f9] dark:bg-zinc-800 px-2 py-0.5 text-xs font-bold text-[#1d4f88] dark:text-sky-300">
                       {displayedDoc.docType}
                     </span>
                   </div>
                 </div>
 
-                <SheetTitle className="font-editorial mt-2 text-2xl font-semibold text-[#142747] leading-snug">
+                <SheetTitle className="font-editorial mt-2 text-2xl font-semibold text-[#142747] dark:text-zinc-100 leading-snug">
                   {displayedDoc.title}
                 </SheetTitle>
-                <SheetDescription className="mt-1 text-xs font-semibold text-[#66778c]">
+                <SheetDescription className="mt-1 text-xs font-semibold text-[#66778c] dark:text-zinc-400">
                   Số hiệu: {displayedDoc.docNumber} · Cơ quan: {displayedDoc.issuer}
                 </SheetDescription>
               </SheetHeader>
 
-              <div className="flex-1 overflow-y-auto board-scroll p-5 sm:p-6 space-y-5">
+              <div className="flex-1 overflow-y-auto board-scroll p-5 sm:p-6 space-y-5 bg-white dark:bg-zinc-950">
                 {/* Thông số metadata */}
-                <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-[#f8f9fa] border border-[#e8ecef] text-xs">
+                <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-[#f8f9fa] dark:bg-zinc-900/90 border border-[#e8ecef] dark:border-zinc-800 text-xs">
                   <div>
-                    <span className="text-[#718294]">Ngày ban hành:</span>
-                    <div className="font-bold text-[#142747] mt-0.5">{displayedDoc.issuedDate}</div>
+                    <span className="text-[#718294] dark:text-zinc-400">Ngày ban hành:</span>
+                    <div className="font-bold text-[#142747] dark:text-zinc-100 mt-0.5">{displayedDoc.issuedDate}</div>
                   </div>
                   <div>
-                    <span className="text-[#718294]">Phạm vi:</span>
-                    <div className="font-bold text-[#142747] mt-0.5 uppercase">
+                    <span className="text-[#718294] dark:text-zinc-400">Phạm vi:</span>
+                    <div className="font-bold text-[#142747] dark:text-zinc-100 mt-0.5 uppercase">
                       {displayedDoc.scope === "public" ? "Công khai" : "Nội bộ"}
                     </div>
                   </div>
                   <div>
-                    <span className="text-[#718294]">Trạng thái hiệu lực:</span>
-                    <div className="font-bold text-[#142747] mt-0.5">
+                    <span className="text-[#718294] dark:text-zinc-400">Trạng thái hiệu lực:</span>
+                    <div className="font-bold text-[#142747] dark:text-zinc-100 mt-0.5">
                       {effectiveStatusLabels[displayedDoc.effectiveStatus]}
                     </div>
                   </div>
                   <div>
-                    <span className="text-[#718294]">{displayedDoc.articleCount > 0 ? "Tổng Điều bóc tách:" : "Nội dung lập chỉ mục:"}</span>
-                    <div className="font-bold text-[#1d4f88] mt-0.5">
+                    <span className="text-[#718294] dark:text-zinc-400">{displayedDoc.articleCount > 0 ? "Tổng Điều bóc tách:" : "Nội dung lập chỉ mục:"}</span>
+                    <div className="font-bold text-[#1d4f88] dark:text-sky-400 mt-0.5">
                       {structureSummary(displayedDoc)}
                     </div>
                   </div>
                 </div>
 
                 {displayedDoc.structureStatus === "mixed_reference_document" && (displayedDoc.coverage ?? 0) >= 0.95 && (
-                  <p className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-900">
+                  <p className="rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50 dark:bg-sky-950/40 p-3 text-xs leading-5 text-sky-900 dark:text-sky-200">
                     Chuyên đề đã được lập chỉ mục theo nội dung với độ bao phủ {Math.round((displayedDoc.coverage ?? 0) * 100)}%.
                     Các Điều được trích dẫn trong tài liệu không được tính là Điều của văn bản gốc.
                   </p>
                 )}
 
                 {displayedDoc.docType !== "Chuyên đề" && displayedDoc.articleCount === 0 && (displayedDoc.chunkCount ?? 0) <= 1 && (
-                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-5 text-amber-900">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-700" />
+                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 p-3.5 text-xs leading-5 text-amber-900 dark:text-amber-200">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-400" />
                     <div>
                       <span className="font-bold">Cảnh báo dữ liệu trích xuất chưa đầy đủ: </span>
                       Văn bản quy phạm này hiện chỉ có {displayedDoc.chunkCount ?? 0} phân đoạn và chưa nhận diện được Điều/Khoản (thường xảy ra khi tệp PDF scan chỉ mới được nhận diện trang đầu ở bản nạp cũ). Bạn nên xóa bản ghi này và nạp lại bằng AI OCR đa trang để lập chỉ mục toàn văn.
@@ -730,31 +730,31 @@ export function AdminDocumentsPage() {
 
                 {/* Cấu trúc nhận diện */}
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#6a7b8e] mb-2.5">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#6a7b8e] dark:text-zinc-400 mb-2.5">
                     {displayedDoc.articleCount > 0 ? "Cấu trúc Phần / Mục / Điều" : "Cấu trúc Phần / Mục nhận diện"}
                   </div>
                   {displayedDoc.chapters && displayedDoc.chapters.length > 0 ? (
                     <div className="space-y-3 max-h-[300px] overflow-y-auto board-scroll pr-1">
                       {displayedDoc.chapters.map((chap, i) => (
-                        <div key={i} className="rounded-xl border border-[#e2e7ec] bg-[#fafafa] p-3.5 text-xs">
-                          <div className="font-bold text-[#142747] mb-2">{chap.title}</div>
-                          <div className="space-y-1.5 pl-2.5 border-l-2 border-[#cbd5df]">
+                        <div key={i} className="rounded-xl border border-[#e2e7ec] dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900/90 p-3.5 text-xs">
+                          <div className="font-bold text-[#142747] dark:text-zinc-100 mb-2">{chap.title}</div>
+                          <div className="space-y-1.5 pl-2.5 border-l-2 border-[#cbd5df] dark:border-zinc-700">
                             {chap.sections?.map((section, j) => (
-                              <div key={`section-${j}`} className="text-[#415367] leading-relaxed">{section}</div>
+                              <div key={`section-${j}`} className="text-[#415367] dark:text-zinc-300 leading-relaxed">{section}</div>
                             ))}
                             {chap.articles && chap.articles.length > 0 ? (
                               chap.articles.map((art, j) => (
-                                <div key={j} className="text-[#415367] leading-relaxed">{art}</div>
+                                <div key={j} className="text-[#415367] dark:text-zinc-300 leading-relaxed">{art}</div>
                               ))
                             ) : (
-                              <div className="text-[#66778c]">{chap.chunkCount ?? 0} đoạn đã lập chỉ mục</div>
+                              <div className="text-[#66778c] dark:text-zinc-400">{chap.chunkCount ?? 0} đoạn đã lập chỉ mục</div>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-[#d3dbe4] p-5 text-xs text-[#718294] text-center">
+                    <div className="rounded-xl border border-dashed border-[#d3dbe4] dark:border-zinc-800 p-5 text-xs text-[#718294] dark:text-zinc-400 text-center">
                       Chưa nhận diện được tiêu đề Phần hoặc Mục trong nội dung đã lập chỉ mục.
                     </div>
                   )}
@@ -763,11 +763,11 @@ export function AdminDocumentsPage() {
                 {/* Danh sách nội dung phân đoạn thực tế trong kho vector */}
                 <div className="space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#6a7b8e]">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#6a7b8e] dark:text-zinc-400">
                       Nội dung đã lập chỉ mục
                     </div>
                     {!showChunksLoading && !chunksError && (
-                      <span className="rounded-full bg-[#eef4f9] px-2.5 py-0.5 text-[11px] font-bold text-[#1d4f88]">
+                      <span className="rounded-full bg-[#eef4f9] dark:bg-zinc-800 px-2.5 py-0.5 text-[11px] font-bold text-[#1d4f88] dark:text-sky-300">
                         {docChunksTotal > docChunks.length
                           ? `Hiển thị ${docChunks.length}/${docChunksTotal} phân đoạn`
                           : `${docChunksTotal} phân đoạn`}
@@ -776,21 +776,21 @@ export function AdminDocumentsPage() {
                   </div>
 
                   {!showChunksLoading && !chunksError && docChunks.length > 3 && (
-                    <div className="flex items-center gap-2 rounded-xl border border-[#cbd5df] bg-white px-3 py-2 focus-within:border-[#1d4f88]">
-                      <Search size={14} className="shrink-0 text-[#7c8b9d]" />
+                    <div className="flex items-center gap-2 rounded-xl border border-[#cbd5df] dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 focus-within:border-[#1d4f88] dark:focus-within:border-sky-500">
+                      <Search size={14} className="shrink-0 text-[#7c8b9d] dark:text-zinc-400" />
                       <input
                         type="text"
                         value={chunkSearchTerm}
                         onChange={(event) => setChunkSearchTerm(event.target.value)}
                         placeholder="Lọc nhanh theo số Điều hoặc từ khóa nội dung..."
-                        className="w-full bg-transparent text-xs font-medium text-[#142747] outline-none placeholder:text-[#9aa5b2]"
+                        className="w-full bg-transparent text-xs font-medium text-[#142747] dark:text-zinc-100 outline-none placeholder:text-[#9aa5b2] dark:placeholder:text-zinc-500"
                       />
                       {chunkSearchTerm && (
                         <button
                           type="button"
                           onClick={() => setChunkSearchTerm("")}
                           aria-label="Xóa từ khóa lọc nội dung"
-                          className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                          className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-600 dark:hover:text-zinc-200"
                         >
                           <X size={13} />
                         </button>
@@ -799,32 +799,32 @@ export function AdminDocumentsPage() {
                   )}
 
                   {showChunksLoading ? (
-                    <div className="rounded-xl border border-[#e2e7ec] bg-[#fafafa] p-6 text-center text-xs text-[#66778c]">
-                      <Loader2 size={20} className="mx-auto mb-2 motion-safe:animate-spin text-[#1d4f88]" />
+                    <div className="rounded-xl border border-[#e2e7ec] dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900/90 p-6 text-center text-xs text-[#66778c] dark:text-zinc-400">
+                      <Loader2 size={20} className="mx-auto mb-2 motion-safe:animate-spin text-[#1d4f88] dark:text-sky-400" />
                       <p className="font-semibold">Đang tải nội dung các phân đoạn từ kho vector...</p>
                     </div>
                   ) : chunksError ? (
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 p-3.5 text-xs text-rose-800 dark:text-rose-300">
                       <span className="font-medium">{chunksError}</span>
                       <button
                         type="button"
                         onClick={() => void fetchDocumentChunks(displayedDoc.id)}
-                        className="shrink-0 font-bold text-rose-900 underline hover:opacity-80"
+                        className="shrink-0 font-bold text-rose-900 dark:text-rose-200 underline hover:opacity-80"
                       >
                         Thử lại
                       </button>
                     </div>
                   ) : docChunks.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#d3dbe4] p-5 text-center text-xs text-[#718294]">
+                    <div className="rounded-xl border border-dashed border-[#d3dbe4] dark:border-zinc-800 p-5 text-center text-xs text-[#718294] dark:text-zinc-400">
                       Không có phân đoạn nội dung nào được lưu trong kho vector cho tài liệu này.
                     </div>
                   ) : filteredChunks.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#d3dbe4] p-5 text-center text-xs text-[#718294]">
+                    <div className="rounded-xl border border-dashed border-[#d3dbe4] dark:border-zinc-800 p-5 text-center text-xs text-[#718294] dark:text-zinc-400">
                       <p>Không có phân đoạn nào khớp với từ khóa lọc hiện tại.</p>
                       <button
                         type="button"
                         onClick={() => setChunkSearchTerm("")}
-                        className="mt-2 font-bold text-[#1d4f88] underline"
+                        className="mt-2 font-bold text-[#1d4f88] dark:text-sky-400 underline"
                       >
                         Xóa từ khóa lọc
                       </button>
@@ -836,22 +836,22 @@ export function AdminDocumentsPage() {
                         return (
                           <article
                             key={chunk.chunkId}
-                            className="rounded-xl border border-[#e2e7ec] bg-[#fafafa] p-3.5 text-xs"
+                            className="rounded-xl border border-[#e2e7ec] dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900/90 p-3.5 text-xs"
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <h4 className="min-w-0 break-words font-bold text-[#142747]">
+                              <h4 className="min-w-0 break-words font-bold text-[#142747] dark:text-zinc-100">
                                 {formatChunkHeading(chunk)}
                               </h4>
-                              <span className="shrink-0 rounded bg-[#eef4f9] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#1d4f88]">
+                              <span className="shrink-0 rounded bg-[#eef4f9] dark:bg-zinc-800 px-2 py-0.5 font-mono text-[11px] font-semibold text-[#1d4f88] dark:text-sky-300">
                                 #{chunk.index}
                               </span>
                             </div>
                             {breadcrumb && (
-                              <p className="mt-1 break-words text-[11px] font-semibold text-[#66778c]">
+                              <p className="mt-1 break-words text-[11px] font-semibold text-[#66778c] dark:text-zinc-400">
                                 {breadcrumb}
                               </p>
                             )}
-                            <p className="mt-2 whitespace-pre-line break-words leading-relaxed text-[#334155]">
+                            <p className="mt-2 whitespace-pre-line break-words leading-relaxed text-[#334155] dark:text-zinc-300">
                               {chunk.content}
                             </p>
                           </article>
@@ -862,10 +862,10 @@ export function AdminDocumentsPage() {
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5 border-t border-[#edf1f4] bg-white flex gap-3">
+              <div className="p-4 sm:p-5 border-t border-[#edf1f4] dark:border-zinc-800 bg-white dark:bg-zinc-950 flex gap-3">
                 <Link
                   to="/admin/chat"
-                  className="flex-1 inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-[#1d4f88] text-xs font-bold text-white hover:bg-[#153b66] transition-colors"
+                  className="flex-1 inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-[#1d4f88] dark:bg-blue-600 text-xs font-bold text-white hover:bg-[#153b66] dark:hover:bg-blue-700 transition-colors"
                 >
                   Thử nghiệm hỏi đáp <ArrowUpRight size={15} />
                 </Link>
@@ -873,7 +873,7 @@ export function AdminDocumentsPage() {
                   type="button"
                   onClick={() => handleDeleteDocument(displayedDoc)}
                   disabled={isDeleting}
-                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors"
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 px-4 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
                 >
                   <Trash2 size={15} /> Xóa
                 </button>
