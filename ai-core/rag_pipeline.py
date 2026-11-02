@@ -347,9 +347,9 @@ class LegalRAG:
         )
         try:
             if model_provider == "gemini":
-                primary_model = os.getenv("GEMINI_MODEL") or "gemini-2.5-flash-lite"
+                primary_model = os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
                 fallback_models = [primary_model]
-                for candidate_model in ("gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash"):
+                for candidate_model in ("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash", "gemini-2.0-flash"):
                     if candidate_model not in fallback_models:
                         fallback_models.append(candidate_model)
                 response = None
@@ -358,7 +358,7 @@ class LegalRAG:
                     client_kwargs = {"api_key": current_key}
                     if genai_types and hasattr(genai_types, "HttpOptions") and hasattr(genai_types, "HttpRetryOptions"):
                         client_kwargs["http_options"] = genai_types.HttpOptions(
-                            timeout=15000,
+                            timeout=30000,
                             retry_options=genai_types.HttpRetryOptions(attempts=1, http_status_codes=[]),
                         )
                     if model_api_key:
@@ -370,16 +370,20 @@ class LegalRAG:
                         client = self._genai_client
                     for model_idx, active_model in enumerate(fallback_models):
                         try:
+                            gen_kwargs = {
+                                "temperature": config.temperature,
+                                "top_p": config.top_p,
+                                "max_output_tokens": config.max_tokens,
+                                "system_instruction": system_prompt,
+                                "response_mime_type": "application/json",
+                            }
+                            # Tắt suy nghĩ ngầm trên Gemini 2.5 để toàn bộ định mức token dành cho câu trả lời và trích dẫn JSON
+                            if hasattr(genai_types, "ThinkingConfig"):
+                                gen_kwargs["thinking_config"] = genai_types.ThinkingConfig(thinking_budget=0)
                             response = client.models.generate_content(
                                 model=active_model,
                                 contents=prompt,
-                                config=genai_types.GenerateContentConfig(
-                                    temperature=config.temperature,
-                                    top_p=config.top_p,
-                                    max_output_tokens=config.max_tokens,
-                                    system_instruction=system_prompt,
-                                    response_mime_type="application/json",
-                                ),
+                                config=genai_types.GenerateContentConfig(**gen_kwargs),
                             )
                             break
                         except Exception as exc:
@@ -387,15 +391,15 @@ class LegalRAG:
                             err_text = str(exc)
                             if "404" in err_text or "NOT_FOUND" in err_text:
                                 continue
-                            if any(code in err_text for code in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "Quota exceeded")):
+                            if any(code in err_text for code in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "Quota exceeded", "504", "DEADLINE_EXCEEDED", "timed out", "Timeout")):
                                 logging.getLogger(__name__).warning(
-                                    "Khóa Gemini API (%d/%d) gặp sự cố với model %s: %s. Chuyển sang khóa/mô hình tiếp theo...",
+                                    "Khóa Gemini API (%d/%d) gặp sự cố với model %s: %s. Thử mô hình hoặc khóa tiếp theo...",
                                     k_idx + 1,
                                     len(gemini_keys),
                                     active_model,
                                     err_text[:120],
                                 )
-                                break
+                                continue
                             raise
                     if response is not None:
                         break
@@ -484,6 +488,7 @@ class LegalRAG:
         answer, citations = parse_answer(response_text)
         # Không phát hành lập luận hoặc nguồn khi bất kỳ căn cứ gốc nào sai schema.
         if not citations:
+            logging.getLogger(__name__).warning("Refusal: parse_answer khong bóc tách duoc citations. Response text: %s", response_text[:300])
             return RagAnswer(REFUSAL, [], [], [])
         # Xác minh mọi citation trước khi khử trùng, đồng thời tự ánh xạ chunk anh em cùng Điều để tránh False Refusal.
         allowed = {chunk.chunk_id: chunk for chunk in chunks}
@@ -505,6 +510,7 @@ class LegalRAG:
         for item in citations:
             verified = verify_and_repair_citation(item, allowed, sibling_lookup)
             if not verified:
+                logging.getLogger(__name__).warning("Refusal: verify_and_repair_citation that bai cho citation: %s", item)
                 return RagAnswer(REFUSAL, [], [], [])
             repaired_item, matched_chunk = verified
             if matched_chunk.chunk_id not in allowed:

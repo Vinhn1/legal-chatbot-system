@@ -207,7 +207,7 @@ def extract_json(raw: str) -> dict | None:
     if not isinstance(raw, str):
         return None
     cleaned = re.sub(r"^\s*```(?:json)?\s*|\s*```\s*$", "", raw.strip(), flags=re.I)
-    decoder = json.JSONDecoder()
+    decoder = json.JSONDecoder(strict=False)
     for index, char in enumerate(cleaned):
         if char != "{":
             continue
