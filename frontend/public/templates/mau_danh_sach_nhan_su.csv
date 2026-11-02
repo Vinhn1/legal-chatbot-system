@@ -1,0 +1,4 @@
+username,password,role,name,phone,email,dob,address
+nguyenvana,123456,staff,Nguyễn Văn A,0931234567,nguyenvana@example.com,1995-03-15,Hà Nội
+tranthib,123456,staff,Trần Thị B,0937654321,tranthib@example.com,1998-08-20,TP Hồ Chí Minh
+lethic,123456,admin,Lê Thị C,0909998888,lethic@example.com,1992-11-05,Đà Nẵng

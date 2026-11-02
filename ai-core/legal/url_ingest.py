@@ -1,17 +1,36 @@
 """Tải trang công khai, bóc tách văn bản pháp luật và lập chỉ mục."""
 
-import hashlib
+import ipaddress
 import json
 import re
+import socket
 from urllib.parse import urljoin
 
 import requests
 import trafilatura
 from bs4 import BeautifulSoup
+import urllib3.util.connection as urllib3_connection
 
 from legal.ingest import IngestDocumentMetadata, IngestResult, MAX_FILE_BYTES, ingest_file
-from legal.metadata_extractor import auto_extract_metadata
+from legal.metadata_extractor import auto_extract_metadata, readable_document_number
 from legal.security import validate_public_url
+
+_orig_create_connection = urllib3_connection.create_connection
+
+
+def _safe_create_connection(address, *args, **kwargs):
+    """Xác thực IP tầng socket ngay trước khi kết nối TCP để chặn DNS Rebinding (TOCTOU)."""
+    host, port = address
+    try:
+        ip = ipaddress.ip_address(host)
+        addresses = [ip]
+    except ValueError:
+        records = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        addresses = [ipaddress.ip_address(record[4][0].split("%", 1)[0]) for record in records]
+
+    if not addresses or any(not addr.is_global for addr in addresses):
+        raise ValueError("Địa chỉ IP đích không phải là địa chỉ công khai hợp lệ.")
+    return _orig_create_connection(address, *args, **kwargs)
 
 
 DEFAULT_HEADERS = {
@@ -62,8 +81,9 @@ def _clean_public_dom(soup: BeautifulSoup) -> None:
 
 
 def _download_public_html(url: str) -> bytes:
-    """Kiểm tra từng đích chuyển hướng và giới hạn dữ liệu nhận từ mạng."""
+    """Kiểm tra từng đích chuyển hướng và giới hạn dữ liệu nhận từ mạng kèm chống DNS Rebinding."""
     current = validate_public_url(url)
+    urllib3_connection.create_connection = _safe_create_connection
     try:
         for _ in range(6):
             with requests.get(current, timeout=30, allow_redirects=False, stream=True,
@@ -86,6 +106,7 @@ def _download_public_html(url: str) -> bytes:
                         raise ValueError("Trang web vượt quá giới hạn 15 MB.")
                     chunks.append(chunk)
                 return b"".join(chunks)
+        raise ValueError("Trang nguồn chuyển hướng quá nhiều lần.")
     except requests.exceptions.HTTPError as exc:
         # Không đưa URL hoặc thông điệp gốc của thư viện HTTP vào phản hồi API.
         code = exc.response.status_code if exc.response is not None else None
@@ -106,7 +127,8 @@ def _download_public_html(url: str) -> bytes:
         raise ValueError("Không thể kết nối đến máy chủ trang nguồn. Vui lòng kiểm tra lại URL hoặc kết nối mạng.") from None
     except requests.exceptions.RequestException:
         raise ValueError("Không tải được trang nguồn công khai do lỗi yêu cầu HTTP.") from None
-    raise ValueError("Trang nguồn chuyển hướng quá nhiều lần.")
+    finally:
+        urllib3_connection.create_connection = _orig_create_connection
 
 
 def fetch_and_clean_url(url: str) -> tuple[str, str]:
@@ -151,13 +173,13 @@ def fetch_and_clean_url(url: str) -> tuple[str, str]:
 def build_document_metadata(data: bytes, filename: str, source_url: str = "", page_title: str = "") -> IngestDocumentMetadata:
     """Chuẩn hóa metadata tự động; đánh dấu trường chưa nhận diện thay vì yêu cầu nhập tay."""
     extracted = auto_extract_metadata(data, filename)
-    digest = hashlib.sha256(data).hexdigest()
     fields = IngestDocumentMetadata.model_fields
     normalized = {key: value for key, value in extracted.items() if key in fields and value is not None}
     fallback_title = filename.rsplit(".", 1)[0]
     # Tiêu đề tiếng Việt trên trang nguồn chính xác hơn tiêu đề heuristic bị cắt ngắn.
     normalized["doc_title"] = page_title or normalized.get("doc_title") or fallback_title
-    normalized["doc_number"] = normalized.get("doc_number") or f"CHUA-XAC-DINH-{digest[:12]}"
+    normalized["doc_number"] = normalized.get("doc_number") or readable_document_number(
+        data.decode("utf-8", errors="ignore"), filename, normalized["doc_title"])
     normalized["issuing_authority"] = normalized.get("issuing_authority") or "Chưa xác định"
     normalized["source_url"] = source_url or normalized.get("source_url") or "https://congbao.chinhphu.vn"
     # Không khẳng định còn hiệu lực khi chưa nhận diện được ngày bắt đầu áp dụng.

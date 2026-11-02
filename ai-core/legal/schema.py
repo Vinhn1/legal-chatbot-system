@@ -36,11 +36,22 @@ class LegalChunkMetadata(BaseModel):
     # Ngày dữ liệu được lập chỉ mục, dùng cho thống kê cập nhật công khai.
     indexed_at: date | None = None
     content_hash: str | None = None
+    part: str | None = None
     chapter: str | None = None
+    section: str | None = None
+    subsection: str | None = None
     article_number: str | None = None
     article_title: str | None = None
     clause_number: str | None = None
     point_id: str | None = None
+    unit_type: Literal["article", "clause", "point", "paragraph", "general"] | None = None
+    # Mã định danh chuẩn hóa cấp độ chi tiết doc_code:article:clause:point phục vụ truy xuất tham chiếu 2 chiều.
+    unit_code: str | None = None
+    parent_context: str | None = None
+    mentioned_articles: str | None = None
+    referenced_articles: str | None = None
+    referenced_units: str | None = None
+    referenced_docs: str | None = None
     effective_status: EffectiveStatus = EffectiveStatus.UNKNOWN
     effective_date: date | None = None
     expiry_date: date | None = None
@@ -56,7 +67,28 @@ class LegalChunkMetadata(BaseModel):
         UUID(value)
         return value
 
-    @field_validator("doc_number", "doc_title", "document_type", "issuing_authority", "content_hash", "chapter", "article_number", "article_title", "clause_number", "point_id", "source_url")
+    @field_validator(
+        "doc_number",
+        "doc_title",
+        "document_type",
+        "issuing_authority",
+        "content_hash",
+        "part",
+        "chapter",
+        "section",
+        "subsection",
+        "article_number",
+        "article_title",
+        "clause_number",
+        "point_id",
+        "unit_code",
+        "parent_context",
+        "mentioned_articles",
+        "referenced_articles",
+        "referenced_units",
+        "referenced_docs",
+        "source_url",
+    )
     @classmethod
     def no_blank_values(cls, value: str | None) -> str | None:
         if value is not None and not value.strip():

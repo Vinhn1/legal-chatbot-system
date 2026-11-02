@@ -8,13 +8,15 @@ describe('ChatController', () => {
   let controller: ChatController;
   const sendMessageToAi = jest.fn();
   const getPublicSummary = jest.fn();
+  const getDocumentChunks = jest.fn();
 
   beforeEach(async () => {
     sendMessageToAi.mockReset();
     getPublicSummary.mockReset();
+    getDocumentChunks.mockReset();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ChatController],
-      providers: [{ provide: ChatService, useValue: { sendMessageToAi, getPublicSummary } }],
+      providers: [{ provide: ChatService, useValue: { sendMessageToAi, getPublicSummary, getDocumentChunks, authorizeSession: (sessionId?: string) => ({ sessionId }) } }],
     }).compile();
     controller = module.get<ChatController>(ChatController);
   });
@@ -23,7 +25,7 @@ describe('ChatController', () => {
     const response = { answer: 'Nội dung trả lời', citations: [{ articleNumber: '1', content: 'Điều 1. Nội dung gốc' }] };
     sendMessageToAi.mockResolvedValue(response);
 
-    await expect(controller.handleChat('  Điều 1 quy định gì?  ', 'session-1')).resolves.toEqual(response);
+    await expect(controller.handleChat('  Điều 1 quy định gì?  ', 'session-1')).resolves.toEqual({ ...response, sessionId: 'session-1' });
     expect(sendMessageToAi).toHaveBeenCalledWith('Điều 1 quy định gì?', 'session-1');
   });
 
@@ -43,5 +45,12 @@ describe('ChatController', () => {
   it('trả thống kê công khai từ dịch vụ AI Core', async () => {
     getPublicSummary.mockResolvedValue({ document_count: 2, article_count: 8, last_updated: null });
     await expect(controller.getPublicSummary()).resolves.toMatchObject({ document_count: 2, article_count: 8 });
+  });
+
+  it('kiểm tra mã tài liệu trước khi truy vấn phân đoạn đã lập chỉ mục', async () => {
+    getDocumentChunks.mockResolvedValue({ docId: '7b09ace3-d3a2-4fb1-a5cc-a7e0338be119', total: 2, chunks: [] });
+    await expect(controller.getDocumentChunks('7b09ace3-d3a2-4fb1-a5cc-a7e0338be119')).resolves.toMatchObject({ total: 2 });
+    expect(() => controller.getDocumentChunks('../invalid')).toThrow(HttpException);
+    expect(getDocumentChunks).toHaveBeenCalledTimes(1);
   });
 });

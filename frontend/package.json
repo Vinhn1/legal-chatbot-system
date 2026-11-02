@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "lint": "eslint src/app/components/CitationViewer.tsx src/app/components/LegalChat.tsx src/app/pages/admin/AdminChatPlaygroundPage.tsx src/app/pages/admin/AdminIngestPage.tsx src/app/pages/admin/AdminDocumentsPage.tsx --max-warnings=0",
-    "preview": "vite preview --host 0.0.0.0 --port 5173"
+    "lint": "eslint src/app/components/CitationViewer.tsx src/app/components/LegalChat.tsx src/app/pages/admin/AdminChatPlaygroundPage.tsx src/app/pages/admin/AdminIngestPage.tsx src/app/pages/admin/AdminDocumentsPage.tsx src/app/pages/admin/AdminAnalyticsPage.tsx src/app/pages/admin/AdminConversationsPage.tsx src/app/pages/admin/AdminProfilePage.tsx src/app/pages/ForgotPasswordPage.tsx src/app/pages/LoginPage.tsx --max-warnings=0",
+    "preview": "vite preview --host 0.0.0.0 --port 5173",
+    "typecheck": "tsc --noEmit --project tsconfig.app.json"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

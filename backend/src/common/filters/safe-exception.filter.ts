@@ -24,18 +24,48 @@ const SAFE_URL_INGEST_MESSAGES = new Set([
   'Không tạo được đoạn văn bản để lập chỉ mục.',
 ]);
 
+// Các thông báo nghiệp vụ cố định cho luồng nạp tệp và OCR của quản trị viên.
+const SAFE_LEGAL_ADMIN_MESSAGES = new Set([
+  'Thiếu tệp văn bản pháp luật cần OCR.',
+  'Tệp tải lên phải là định dạng PDF hợp lệ.',
+  'Không nhận diện được chữ tiếng Việt rõ ràng từ tệp PDF scan này. Vui lòng dán nội dung văn bản trực tiếp vào ô bên dưới.',
+  'Thiếu tệp văn bản pháp luật.',
+  'Metadata phải là JSON hợp lệ.',
+  'Metadata nạp tài liệu phải là chuỗi JSON hợp lệ.',
+  'Cờ lập chỉ mục theo đoạn văn không hợp lệ.',
+  'Yêu cầu tải lên tệp PDF, DOCX hoặc TXT không rỗng.',
+  'Vui lòng cung cấp tệp PDF, DOCX hoặc TXT có nội dung.',
+  'Chỉ hỗ trợ tệp PDF, DOCX hoặc TXT.',
+  'Không trích xuất được nội dung văn bản từ tệp tải lên.',
+  'Không tạo được đoạn văn bản để lập chỉ mục.',
+  'Vui lòng dán nội dung văn bản.',
+  'Vui lòng nhập nội dung văn bản cần nạp.',
+  'Văn bản vượt quá giới hạn 15 MB.',
+]);
+
 /** Chỉ nhận lời nhắn đã biết; không chuyển tiếp dữ liệu tùy ý từ nguồn ngoài. */
 function safeUrlIngestMessage(exception: unknown, request: Request, statusCode: number): string | null {
-  if (statusCode !== 400 || !request.path?.endsWith('/legal/ingest-url') || !(exception instanceof HttpException)) {
+  if (statusCode !== 400 || !(exception instanceof HttpException)) {
     return null;
   }
   const body = exception.getResponse();
   const detail = typeof body === 'string' ? body :
     typeof body === 'object' && body !== null && 'message' in body ? body.message : null;
   if (typeof detail !== 'string') return null;
-  if (SAFE_URL_INGEST_MESSAGES.has(detail)) return detail;
-  if (/^Máy chủ trang nguồn gặp sự cố \(mã phản hồi 5\d{2}\)\.$/.test(detail)) return detail;
-  if (/^Trang web nguồn từ chối yêu cầu \(mã phản hồi 4\d{2}\)\.$/.test(detail)) return detail;
+  const path = request.path || '';
+  if (path.endsWith('/legal/ingest-url')) {
+    if (SAFE_URL_INGEST_MESSAGES.has(detail)) return detail;
+    if (/^Máy chủ trang nguồn gặp sự cố \(mã phản hồi 5\d{2}\)\.$/.test(detail)) return detail;
+    if (/^Trang web nguồn từ chối yêu cầu \(mã phản hồi 4\d{2}\)\.$/.test(detail)) return detail;
+  }
+  if (
+    path.endsWith('/legal/ocr') ||
+    path.endsWith('/legal/ingest') ||
+    path.endsWith('/legal/ingest-text') ||
+    path.endsWith('/legal/extract-metadata')
+  ) {
+    if (SAFE_LEGAL_ADMIN_MESSAGES.has(detail)) return detail;
+  }
   return null;
 }
 

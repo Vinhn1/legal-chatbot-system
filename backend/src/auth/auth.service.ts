@@ -1,8 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
+import { OtpService } from './otp.service';
+import { randomUUID } from 'crypto';
+import { User } from '../users/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -10,6 +13,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly otp?: OtpService,
   ) {}
 
   async validateUser(username: string, pass: string) {
@@ -28,11 +32,11 @@ export class AuthService {
   }
 
   sendLogin2FaOtp(userId: number) {
-    return this.usersService.request2FaOtp(userId);
+    return this.usersService.requestLoginOtp(userId);
   }
 
-  async verify2FaLogin(username: string, otpCode: string) {
-    const user = await this.usersService.verify2FaOtp(username, otpCode);
+  async verify2FaLogin(username: string, otpCode: string, challengeId: string) {
+    const user = await this.usersService.verify2FaOtp(username, otpCode, challengeId);
     return this.login(user);
   }
 
@@ -41,49 +45,27 @@ export class AuthService {
       throw new BadRequestException('Địa chỉ email không hợp lệ.');
     }
     const user = await this.usersService.findByEmail(email.toLowerCase().trim());
-    if (!user) {
-      throw new NotFoundException('Không tìm thấy tài khoản liên kết với email này.');
+    // Cùng cấu trúc và thông báo cho tài khoản có/không tồn tại, kể cả lỗi gửi email.
+    let challengeId = randomUUID();
+    if (user) {
+      try { challengeId = (await this.otp!.issue(user.id, user.email!, 'password_reset', email.toLowerCase().trim())).challengeId; }
+      catch { /* Không tiết lộ trạng thái tài khoản qua lỗi gửi mã hoặc cooldown. */ }
     }
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.otpCode = otp;
-    user.otpCreatedAt = new Date();
-    await this.usersService.saveUser(user);
-    if (!(await this.emailService.sendOtpEmail(email, otp))) {
-      throw new BadRequestException('Không thể gửi email xác thực.');
-    }
-    return { success: true, message: 'Mã xác thực đã được gửi qua email.' };
+    return { success: true, challengeId, expiresIn: 180, message: 'Nếu tài khoản tồn tại, mã xác thực sẽ được gửi qua email.' };
   }
 
-  private async getUserWithValidOtp(email: string, otpCode: string) {
-    if (!email || !otpCode) {
-      throw new BadRequestException('Thiếu email hoặc mã xác thực.');
-    }
-    const user = await this.usersService.findByEmail(email.toLowerCase().trim());
-    if (!user) {
-      throw new NotFoundException('Không tìm thấy tài khoản liên kết với email này.');
-    }
-    const elapsed = user.otpCreatedAt ? Date.now() - new Date(user.otpCreatedAt).getTime() : Infinity;
-    if (!user.otpCode || user.otpCode !== otpCode || elapsed > 3 * 60 * 1000) {
-      throw new BadRequestException('Mã xác thực không hợp lệ hoặc đã hết hạn.');
-    }
-    return user;
-  }
-
-  async verifyResetPasswordOtp(email: string, otpCode: string) {
-    await this.getUserWithValidOtp(email, otpCode);
+  async verifyResetPasswordOtp(email: string, otpCode: string, challengeId: string) {
+    await this.otp!.verify(challengeId, otpCode, 'password_reset', undefined, email.toLowerCase().trim(), false, async () => true);
     return { success: true, message: 'Mã xác thực hợp lệ.' };
   }
 
-  async resetPassword(email: string, otpCode: string, pass: string) {
-    if (!pass) {
-      throw new BadRequestException('Thiếu mật khẩu mới.');
-    }
-    const user = await this.getUserWithValidOtp(email, otpCode);
-    user.password = await bcrypt.hash(pass, 10);
-    user.tokenVersion = (user.tokenVersion || 0) + 1;
-    user.otpCode = null;
-    user.otpCreatedAt = null;
-    await this.usersService.saveUser(user);
+  async resetPassword(email: string, otpCode: string, pass: string, challengeId: string) {
+    if (typeof pass !== 'string' || pass.length < 8 || pass.length > 128) throw new BadRequestException('Mật khẩu phải có từ 8 đến 128 ký tự.');
+    const password = await bcrypt.hash(pass, 10);
+    // Đổi mật khẩu và tiêu thụ challenge trong cùng transaction để chống hai request đồng thời.
+    await this.otp!.verify(challengeId, otpCode, 'password_reset', undefined, email.toLowerCase().trim(), true, async (manager, id) => {
+      await manager.update(User, id, { password, tokenVersion: () => 'token_version + 1', otpCode: null, otpCreatedAt: null });
+    });
     return { success: true, message: 'Đặt lại mật khẩu thành công.' };
   }
 

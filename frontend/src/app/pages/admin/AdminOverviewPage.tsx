@@ -424,9 +424,9 @@ export function AdminOverviewPage() {
             <p className="mt-3 text-3xl font-bold text-[#1d4f88]">{reviewSummary.total ? `${Math.round(reviewSummary.reviewed / reviewSummary.total * 100)}%` : "—"}</p>
             <p className="mt-1 text-xs text-[#718294]">{reviewSummary.reviewed}/{reviewSummary.total} câu hỏi được đánh dấu đã duyệt trên thiết bị này</p>
             <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-              <Link to="/admin/ingest" className="rounded-xl border border-[#d3dbe4] p-3 text-sm font-semibold hover:bg-slate-50">Nạp tài liệu mới</Link>
-              <Link to="/admin/chat" className="rounded-xl border border-[#d3dbe4] p-3 text-sm font-semibold hover:bg-slate-50">Thử chatbot</Link>
-              <Link to="/admin/conversations" className="rounded-xl border border-[#d3dbe4] p-3 text-sm font-semibold hover:bg-slate-50">Rà soát hội thoại</Link>
+              <Link to="/admin/ingest" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 p-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800/60">Nạp tài liệu mới</Link>
+              <Link to="/admin/chat" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 p-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800/60">Thử chatbot</Link>
+              <Link to="/admin/conversations" className="rounded-xl border border-[#d3dbe4] dark:border-zinc-800 p-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800/60">Rà soát hội thoại</Link>
             </div>
           </section>
 

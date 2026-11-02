@@ -27,4 +27,13 @@ describe('ModelConfig', () => {
     await service.updateModelConfig({ provider: 'gemini', api_key: 'gia-lap-api-key-123456789' });
     await expect(service.updateModelConfig({ provider: 'openai' })).rejects.toThrow('Cần nhập khóa API');
   });
+
+  it('mã hóa và che khóa embedding API thành công', async () => {
+    const embKey = 'embedding-key-gia-lap-987654321';
+    const response = await service.updateModelConfig({ provider: 'gemini', api_key: 'gia-lap-api-key-123456789', embedding_api_key: embKey });
+    expect(stored.encryptedEmbeddingKey).not.toContain(embKey);
+    expect(response.has_embedding_key).toBe(true);
+    expect(JSON.stringify(response)).not.toContain(embKey);
+    expect(response.masked_embedding_key).toMatch(/\*+4321$/);
+  });
 });

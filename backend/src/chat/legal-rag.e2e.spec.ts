@@ -24,6 +24,8 @@ class BenchmarkIdentityGuard implements CanActivate {
 describe('Legal RAG HTTP evaluation', () => {
   let app: INestApplication;
   const service = {
+    // Chữ ký phiên được kiểm tra riêng bằng test capability; HTTP suite tập trung validation và quyền.
+    authorizeSession: () => ({ sessionId: 'fixture-session', sessionToken: 'fixture-capability' }),
     sendMessageToAi: jest.fn().mockResolvedValue({ answer: 'Đã nhận', citations: [] }),
     ingestFromUrl: jest.fn().mockResolvedValue({ status: 'accepted' }),
     uploadDocument: jest.fn().mockResolvedValue({ status: 'accepted' }),

@@ -10,8 +10,11 @@ import {
 import { LegalDocument } from './legal-document.entity';
 
 export enum LegalUnitType {
+  PART = 'part',
   CHAPTER = 'chapter',
   SECTION = 'section',
+  SUBSECTION = 'subsection',
+  GENERAL = 'general',
   ARTICLE = 'article',
   CLAUSE = 'clause',
   POINT = 'point',

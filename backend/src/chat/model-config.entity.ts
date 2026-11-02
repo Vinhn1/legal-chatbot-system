@@ -9,6 +9,9 @@ export class ModelConfig {
   @Column({ default: 'gemini' })
   provider: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ name: 'encrypted_key', type: 'text', nullable: true })
   encryptedKey: string | null;
+
+  @Column({ name: 'encrypted_embedding_key', type: 'text', nullable: true })
+  encryptedEmbeddingKey: string | null;
 }

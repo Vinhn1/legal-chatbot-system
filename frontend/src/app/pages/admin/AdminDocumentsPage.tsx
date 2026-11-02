@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import axios from "axios";
 import {
+  AlertTriangle,
   ArrowUpRight,
   BookOpen,
   CheckCircle2,
@@ -10,11 +11,15 @@ import {
   FileQuestion,
   FileText,
   Globe,
+  Layers,
   Loader2,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
+  ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 import { API_BASE } from "../../../config";
 import {
@@ -24,6 +29,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "../../components/ui/sheet";
+import { FilterDropdown, type FilterOption } from "../../components/ui/FilterDropdown";
 
 /** Định nghĩa kiểu dữ liệu tài liệu pháp lý từ backend RAG */
 export interface LegalDocumentItem {
@@ -42,7 +48,9 @@ export interface LegalDocumentItem {
   scope: "public" | "restricted" | "internal";
   sourceUrl?: string;
   sourceType?: string;
-  chapters: { title: string; articles: string[] }[];
+  structureStatus?: string;
+  coverage?: number;
+  chapters: { title: string; articles: string[]; sections?: string[]; chunkCount?: number }[];
 }
 
 type SourceKind = "pdf" | "docx" | "txt" | "web" | "unknown";
@@ -80,6 +88,91 @@ function getSourceKind(doc: LegalDocumentItem): SourceKind {
   return "unknown";
 }
 
+/** Tùy chọn lọc loại văn bản quy phạm pháp luật */
+const typeFilterOptions: FilterOption[] = [
+  { value: "all", label: "Tất cả loại văn bản" },
+  { value: "Luật", label: "Luật" },
+  { value: "Chuyên đề", label: "Chuyên đề" },
+  { value: "Nghị định", label: "Nghị định" },
+  { value: "Thông tư", label: "Thông tư" },
+  { value: "Nghị quyết", label: "Nghị quyết" },
+];
+
+/** Tùy chọn lọc tình trạng hiệu lực pháp lý */
+const statusFilterOptions: FilterOption[] = [
+  { value: "all", label: "Tất cả hiệu lực" },
+  { value: "active", label: "Còn hiệu lực", dotColor: "bg-emerald-500" },
+  { value: "partially_expired", label: "Hết hiệu lực một phần", dotColor: "bg-amber-500" },
+  { value: "expired", label: "Hết hiệu lực", dotColor: "bg-rose-500" },
+  { value: "unknown", label: "Chưa xác minh", dotColor: "bg-slate-400" },
+];
+
+/** Tùy chọn lọc định dạng nguồn nạp */
+const sourceFilterOptions: FilterOption[] = [
+  { value: "all", label: "Tất cả nguồn" },
+  { value: "pdf", label: "Tệp PDF", icon: FileText, iconColor: "text-rose-600" },
+  { value: "web", label: "Trang Web", icon: Globe, iconColor: "text-sky-600" },
+  { value: "docx", label: "Tệp DOCX", icon: FileText, iconColor: "text-indigo-600" },
+  { value: "txt", label: "Văn bản TXT", icon: FileText, iconColor: "text-slate-600" },
+];
+
+/** Giữ mã hiển thị dễ đọc cho các bản ghi được nạp trước khi đổi quy tắc số hiệu. */
+function readableNumber(number: string, title: string): string {
+  if (!number.startsWith("CHUA-XAC-DINH-")) return number || "Chưa có số hiệu";
+  const topic = title.match(/^Chuyên đề\s+(\d+)/i);
+  return topic ? `CD-${topic[1].padStart(2, "0")}` : "Chưa có số hiệu";
+}
+
+/** Định nghĩa đoạn văn bản hoặc Điều/Khoản thực tế đã lập chỉ mục trong kho vector */
+interface IndexedDocumentChunk {
+  chunkId: string;
+  index: number;
+  unitType: string;
+  chapter: string;
+  section: string;
+  articleNumber: string;
+  articleTitle: string;
+  clauseNumber: string;
+  pointId: string;
+  content: string;
+}
+
+interface DocumentChunksResponse {
+  docId: string;
+  total: number;
+  chunks: IndexedDocumentChunk[];
+}
+
+/** Hiển thị cấu trúc theo số Điều hoặc phân đoạn thực tế, tránh gắn nhãn Chuyên đề sai loại văn bản. */
+function structureSummary(doc: LegalDocumentItem): string {
+  if (doc.articleCount > 0) {
+    return `${doc.articleCount} Điều${doc.chunkCount ? ` (${doc.chunkCount} chunks)` : ""}`;
+  }
+  if (doc.docType === "Chuyên đề") {
+    return `Chuyên đề (${doc.chunkCount ?? 0} chunks)`;
+  }
+  return `Phân đoạn văn bản (${doc.chunkCount ?? 0} chunks)`;
+}
+
+/** Tạo tiêu đề định vị ngắn gọn cho từng đoạn đã lập chỉ mục trong ngăn kéo chi tiết. */
+function formatChunkHeading(chunk: IndexedDocumentChunk): string {
+  const parts: string[] = [];
+  if (chunk.articleNumber) {
+    parts.push(
+      chunk.articleTitle
+        ? `Điều ${chunk.articleNumber}. ${chunk.articleTitle}`
+        : `Điều ${chunk.articleNumber}`
+    );
+  }
+  if (chunk.clauseNumber) {
+    parts.push(`Khoản ${chunk.clauseNumber}`);
+  }
+  if (chunk.pointId) {
+    parts.push(`Điểm ${chunk.pointId}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : `Phân đoạn #${chunk.index}`;
+}
+
 /**
  * Màn hình Quản lý Tài liệu & Cấu trúc Nguồn
  * Kết nối API trực tiếp từ backend NestJS và AI Core, không sử dụng dữ liệu giả.
@@ -97,6 +190,29 @@ export function AdminDocumentsPage() {
   const [selectedDoc, setSelectedDoc] = useState<LegalDocumentItem | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  const [docChunks, setDocChunks] = useState<IndexedDocumentChunk[]>([]);
+  const [docChunksTotal, setDocChunksTotal] = useState(0);
+  const [loadedChunksDocId, setLoadedChunksDocId] = useState<string | null>(null);
+  const [isChunksLoading, setIsChunksLoading] = useState(false);
+  const [chunksError, setChunksError] = useState<string | null>(null);
+  const [chunkSearchTerm, setChunkSearchTerm] = useState("");
+
+  const isAnyFilterActive =
+    typeFilter !== "all" || statusFilter !== "all" || sourceFilter !== "all" || searchTerm.trim() !== "";
+
+  const activeFilterCount =
+    (typeFilter !== "all" ? 1 : 0) +
+    (statusFilter !== "all" ? 1 : 0) +
+    (sourceFilter !== "all" ? 1 : 0) +
+    (searchTerm.trim() !== "" ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setTypeFilter("all");
+    setStatusFilter("all");
+    setSourceFilter("all");
+    setSearchTerm("");
+  };
+
   // Tải danh sách văn bản thực tế từ backend
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
@@ -108,7 +224,7 @@ export function AdminDocumentsPage() {
         const mappedDocs: LegalDocumentItem[] = (rawData as ApiDocument[]).map((item, index) => ({
           id: item.id || `doc-${index}`,
           name: item.name || item.title || "Văn bản pháp luật",
-          docNumber: item.docNumber || item.doc_number || "Chưa có số hiệu",
+          docNumber: readableNumber(item.docNumber || item.doc_number || "", item.title || item.name || ""),
           title: item.title || item.name || "Văn bản pháp luật",
           docType: item.docType || "Luật",
           issuer: item.issuer || item.issuing_authority || "Cơ quan ban hành",
@@ -121,6 +237,8 @@ export function AdminDocumentsPage() {
           scope: item.scope || "public",
           sourceUrl: item.sourceUrl || item.source_url || "",
           sourceType: item.sourceType || item.source_type || "",
+          structureStatus: item.structureStatus || "",
+          coverage: typeof item.coverage === "number" ? item.coverage : undefined,
           chapters: Array.isArray(item.chapters) ? item.chapters : [],
         }));
         setDocuments(mappedDocs);
@@ -148,15 +266,20 @@ export function AdminDocumentsPage() {
 
   // Xóa tài liệu khỏi kho vector
   const handleDeleteDocument = async (doc: LegalDocumentItem) => {
-    const docName = doc.name || doc.title;
+    // ID ổn định tránh xóa nhầm hai văn bản trùng tiêu đề.
+    const docName = doc.id;
     if (!window.confirm(`Bạn có chắc chắn muốn xóa văn bản "${doc.title}" khỏi hệ thống tra cứu?`)) {
       return;
     }
     setIsDeleting(true);
     try {
-      await axios.delete(`${API_BASE}/chat/documents`, {
+      const response = await axios.delete(`${API_BASE}/chat/documents`, {
         params: { name: docName },
       });
+      if (!response.data.success) {
+        alert(`Xóa chưa hoàn tất. Mã phục hồi: ${response.data.job_id || "chưa có"}`);
+        return;
+      }
       if (selectedDoc?.id === doc.id) {
         setIsDetailOpen(false);
       }
@@ -166,6 +289,40 @@ export function AdminDocumentsPage() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // Tải nội dung các phân đoạn đã lập chỉ mục của văn bản đang mở trong ngăn kéo chi tiết
+  const fetchDocumentChunks = useCallback(async (docId: string, signal?: AbortSignal) => {
+    setIsChunksLoading(true);
+    setChunksError(null);
+    try {
+      const response = await axios.get<DocumentChunksResponse>(
+        `${API_BASE}/chat/documents/${encodeURIComponent(docId)}/chunks`,
+        { params: { limit: 300 }, signal }
+      );
+      if (signal?.aborted) return;
+      const items = Array.isArray(response.data?.chunks) ? response.data.chunks : [];
+      setDocChunks(items);
+      setDocChunksTotal(typeof response.data?.total === "number" ? response.data.total : items.length);
+      setLoadedChunksDocId(docId);
+    } catch (err) {
+      if (axios.isCancel(err) || signal?.aborted) return;
+      setDocChunks([]);
+      setDocChunksTotal(0);
+      setLoadedChunksDocId(docId);
+      setChunksError("Không thể tải nội dung đã lập chỉ mục của tài liệu này.");
+    } finally {
+      if (!signal?.aborted) {
+        setIsChunksLoading(false);
+      }
+    }
+  }, []);
+
+  // Mở ngăn kéo chi tiết của tài liệu được chọn và đặt lại ô lọc nội dung
+  const openDocumentDetail = (doc: LegalDocumentItem) => {
+    setSelectedDoc(doc);
+    setChunkSearchTerm("");
+    setIsDetailOpen(true);
   };
 
   // Bộ lọc danh sách
@@ -180,6 +337,38 @@ export function AdminDocumentsPage() {
     return matchSearch && matchType && matchStatus && matchSource;
   });
   const displayedDoc = filteredDocs.find((doc) => doc.id === selectedDoc?.id) || filteredDocs[0] || null;
+  const activeDrawerDocId = isDetailOpen && displayedDoc ? displayedDoc.id : null;
+
+  // Tự động tải các phân đoạn thực tế từ ChromaDB khi mở ngăn kéo chi tiết tài liệu
+  useEffect(() => {
+    if (!activeDrawerDocId) {
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void fetchDocumentChunks(activeDrawerDocId, controller.signal);
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [activeDrawerDocId, fetchDocumentChunks]);
+
+  const showChunksLoading = Boolean(
+    activeDrawerDocId && (isChunksLoading || loadedChunksDocId !== activeDrawerDocId)
+  );
+  const normalizedChunkQuery = chunkSearchTerm.trim().toLowerCase();
+  const filteredChunks = normalizedChunkQuery
+    ? docChunks.filter((chunk) => {
+        const heading = formatChunkHeading(chunk).toLowerCase();
+        return (
+          heading.includes(normalizedChunkQuery) ||
+          chunk.chapter.toLowerCase().includes(normalizedChunkQuery) ||
+          chunk.section.toLowerCase().includes(normalizedChunkQuery) ||
+          chunk.content.toLowerCase().includes(normalizedChunkQuery)
+        );
+      })
+    : docChunks;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -216,57 +405,70 @@ export function AdminDocumentsPage() {
         </div>
       </div>
 
-      {/* Thanh Tìm kiếm & Bộ lọc nhanh */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-xl border border-[#cbd5df] bg-white px-3.5 py-2.5 shadow-2xs focus-within:border-[#1d4f88]">
-          <Search size={18} className="text-[#7c8b9d]" />
+      {/* Thanh Tìm kiếm & Bộ lọc nâng cao */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-xl border border-[#cbd5df] bg-white px-3.5 py-2.5 shadow-2xs transition-all focus-within:border-[#1d4f88] focus-within:ring-2 focus-within:ring-[#1d4f88]/15">
+          <Search size={17} className="text-[#7c8b9d] shrink-0" />
           <input
             type="text"
             placeholder="Tìm theo số hiệu, tên văn bản, cơ quan..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent text-sm font-semibold text-[#142747] outline-none placeholder:text-[#9aa5b2]"
+            className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#142747] outline-none placeholder:text-[#9aa5b2]"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="text-slate-400 hover:text-slate-600 transition-colors p-0.5 rounded-full hover:bg-slate-100"
+              aria-label="Xóa từ khóa tìm kiếm"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
 
-        <select
+        <FilterDropdown
+          label="Loại văn bản"
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          aria-label="Lọc theo loại văn bản"
-          className="h-11 rounded-xl border border-[#cbd5df] bg-white px-3 text-xs sm:text-sm font-semibold text-[#142747] outline-none"
-        >
-          <option value="all">Tất cả loại văn bản</option>
-          <option value="Luật">Luật</option>
-          <option value="Nghị định">Nghị định</option>
-          <option value="Thông tư">Thông tư</option>
-          <option value="Nghị quyết">Nghị quyết</option>
-        </select>
+          options={typeFilterOptions}
+          onChange={setTypeFilter}
+          icon={FileText}
+          ariaLabel="Lọc theo loại văn bản"
+        />
 
-        <select
+        <FilterDropdown
+          label="Hiệu lực"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Lọc theo tình trạng hiệu lực"
-          className="h-11 rounded-xl border border-[#cbd5df] bg-white px-3 text-xs sm:text-sm font-semibold text-[#142747] outline-none"
-        >
-          <option value="all">Tất cả hiệu lực</option>
-          <option value="active">Còn hiệu lực</option>
-          <option value="partially_expired">Hết hiệu lực một phần</option>
-          <option value="expired">Hết hiệu lực</option>
-          <option value="unknown">Chưa xác minh</option>
-        </select>
+          options={statusFilterOptions}
+          onChange={setStatusFilter}
+          icon={ShieldCheck}
+          ariaLabel="Lọc theo tình trạng hiệu lực"
+        />
 
-        <select
+        <FilterDropdown
+          label="Nguồn nạp"
           value={sourceFilter}
-          onChange={(event) => setSourceFilter(event.target.value)}
-          aria-label="Lọc theo nguồn nạp"
-          className="h-11 rounded-xl border border-[#cbd5df] bg-white px-3 text-xs font-semibold text-[#142747] outline-none sm:text-sm"
-        >
-          <option value="all">Tất cả nguồn</option>
-          <option value="pdf">Tệp PDF</option>
-          <option value="web">Trang Web</option>
-          <option value="docx">Tệp DOCX</option>
-          <option value="txt">Văn bản TXT</option>
-        </select>
+          options={sourceFilterOptions}
+          onChange={setSourceFilter}
+          icon={Layers}
+          ariaLabel="Lọc theo nguồn nạp"
+        />
+
+        {isAnyFilterActive && (
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 text-xs font-semibold text-slate-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+            title="Đặt lại tất cả bộ lọc về mặc định"
+          >
+            <RotateCcw size={13} />
+            <span>Đặt lại</span>
+            <span className="flex size-4 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700">
+              {activeFilterCount}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Thông báo lỗi nếu có */}
@@ -327,10 +529,11 @@ export function AdminDocumentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto board-scroll">
-            <table className="w-full text-left text-xs sm:text-sm">
+            <p className="px-5 py-2 text-xs text-[#66778c] lg:hidden">Vuốt ngang để xem đầy đủ các cột tài liệu.</p>
+            <table className="w-full min-w-[880px] text-left text-xs sm:text-sm">
               <thead className="border-b border-[#e2e7ec] bg-[#f8f9fa] text-xs font-bold uppercase tracking-wider text-[#6a7b8e]">
                 <tr>
-                  <th className="py-3.5 px-5">Tài liệu & Trích yếu</th>
+                  <th className="min-w-[320px] py-3.5 px-5">Tài liệu & Trích yếu</th>
                   <th className="py-3.5 px-4">Hình thức nạp</th>
                   <th className="py-3.5 px-4">Hiệu lực</th>
                   <th className="py-3.5 px-4">Lập chỉ mục</th>
@@ -345,12 +548,11 @@ export function AdminDocumentsPage() {
                   return (
                     <tr
                       key={doc.id}
-                      onClick={() => {
-                        setSelectedDoc(doc);
-                        setIsDetailOpen(true);
-                      }}
+                      onClick={() => openDocumentDetail(doc)}
                       className={`cursor-pointer transition-colors ${
-                        isSelected && isDetailOpen ? "bg-[#f0f5fa]" : "hover:bg-slate-50"
+                        isSelected && isDetailOpen
+                          ? "bg-[#f0f5fa] dark:bg-zinc-800"
+                          : "hover:bg-slate-50 dark:hover:bg-zinc-800/60"
                       }`}
                     >
                       <td className="py-4 px-5">
@@ -362,7 +564,7 @@ export function AdminDocumentsPage() {
                           <span>•</span>
                           <span>{doc.issuer}</span>
                           <span>•</span>
-                          <span>{doc.articleCount} Điều</span>
+                          <span>{structureSummary(doc)}</span>
                         </div>
                       </td>
 
@@ -415,8 +617,7 @@ export function AdminDocumentsPage() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedDoc(doc);
-                            setIsDetailOpen(true);
+                            openDocumentDetail(doc);
                           }}
                           title="Xem chi tiết"
                           className="rounded-lg p-2 text-[#1d4f88] hover:bg-[#eef4f9] transition-colors"
@@ -503,38 +704,159 @@ export function AdminDocumentsPage() {
                     </div>
                   </div>
                   <div>
-                    <span className="text-[#718294]">Tổng Điều bóc tách:</span>
+                    <span className="text-[#718294]">{displayedDoc.articleCount > 0 ? "Tổng Điều bóc tách:" : "Nội dung lập chỉ mục:"}</span>
                     <div className="font-bold text-[#1d4f88] mt-0.5">
-                      {displayedDoc.articleCount} Điều {displayedDoc.chunkCount ? `(${displayedDoc.chunkCount} chunks)` : ""}
+                      {structureSummary(displayedDoc)}
                     </div>
                   </div>
                 </div>
 
+                {displayedDoc.structureStatus === "mixed_reference_document" && (displayedDoc.coverage ?? 0) >= 0.95 && (
+                  <p className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-900">
+                    Chuyên đề đã được lập chỉ mục theo nội dung với độ bao phủ {Math.round((displayedDoc.coverage ?? 0) * 100)}%.
+                    Các Điều được trích dẫn trong tài liệu không được tính là Điều của văn bản gốc.
+                  </p>
+                )}
+
+                {displayedDoc.docType !== "Chuyên đề" && displayedDoc.articleCount === 0 && (displayedDoc.chunkCount ?? 0) <= 1 && (
+                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-5 text-amber-900">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-700" />
+                    <div>
+                      <span className="font-bold">Cảnh báo dữ liệu trích xuất chưa đầy đủ: </span>
+                      Văn bản quy phạm này hiện chỉ có {displayedDoc.chunkCount ?? 0} phân đoạn và chưa nhận diện được Điều/Khoản (thường xảy ra khi tệp PDF scan chỉ mới được nhận diện trang đầu ở bản nạp cũ). Bạn nên xóa bản ghi này và nạp lại bằng AI OCR đa trang để lập chỉ mục toàn văn.
+                    </div>
+                  </div>
+                )}
+
                 {/* Cấu trúc nhận diện */}
                 <div>
                   <div className="text-xs font-bold uppercase tracking-wider text-[#6a7b8e] mb-2.5">
-                    Cấu trúc Điều / Khoản nhận diện
+                    {displayedDoc.articleCount > 0 ? "Cấu trúc Phần / Mục / Điều" : "Cấu trúc Phần / Mục nhận diện"}
                   </div>
                   {displayedDoc.chapters && displayedDoc.chapters.length > 0 ? (
-                    <div className="space-y-3 max-h-[380px] overflow-y-auto board-scroll pr-1">
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto board-scroll pr-1">
                       {displayedDoc.chapters.map((chap, i) => (
                         <div key={i} className="rounded-xl border border-[#e2e7ec] bg-[#fafafa] p-3.5 text-xs">
                           <div className="font-bold text-[#142747] mb-2">{chap.title}</div>
                           <div className="space-y-1.5 pl-2.5 border-l-2 border-[#cbd5df]">
+                            {chap.sections?.map((section, j) => (
+                              <div key={`section-${j}`} className="text-[#415367] leading-relaxed">{section}</div>
+                            ))}
                             {chap.articles && chap.articles.length > 0 ? (
                               chap.articles.map((art, j) => (
                                 <div key={j} className="text-[#415367] leading-relaxed">{art}</div>
                               ))
                             ) : (
-                              <div className="text-[#8997a6] italic">Đang tổng hợp danh sách Điều</div>
+                              <div className="text-[#66778c]">{chap.chunkCount ?? 0} đoạn đã lập chỉ mục</div>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-[#d3dbe4] p-6 text-xs text-[#718294] text-center">
-                      Chưa bóc tách cấu trúc Chương phân cấp cho văn bản này.
+                    <div className="rounded-xl border border-dashed border-[#d3dbe4] p-5 text-xs text-[#718294] text-center">
+                      Chưa nhận diện được tiêu đề Phần hoặc Mục trong nội dung đã lập chỉ mục.
+                    </div>
+                  )}
+                </div>
+
+                {/* Danh sách nội dung phân đoạn thực tế trong kho vector */}
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#6a7b8e]">
+                      Nội dung đã lập chỉ mục
+                    </div>
+                    {!showChunksLoading && !chunksError && (
+                      <span className="rounded-full bg-[#eef4f9] px-2.5 py-0.5 text-[11px] font-bold text-[#1d4f88]">
+                        {docChunksTotal > docChunks.length
+                          ? `Hiển thị ${docChunks.length}/${docChunksTotal} phân đoạn`
+                          : `${docChunksTotal} phân đoạn`}
+                      </span>
+                    )}
+                  </div>
+
+                  {!showChunksLoading && !chunksError && docChunks.length > 3 && (
+                    <div className="flex items-center gap-2 rounded-xl border border-[#cbd5df] bg-white px-3 py-2 focus-within:border-[#1d4f88]">
+                      <Search size={14} className="shrink-0 text-[#7c8b9d]" />
+                      <input
+                        type="text"
+                        value={chunkSearchTerm}
+                        onChange={(event) => setChunkSearchTerm(event.target.value)}
+                        placeholder="Lọc nhanh theo số Điều hoặc từ khóa nội dung..."
+                        className="w-full bg-transparent text-xs font-medium text-[#142747] outline-none placeholder:text-[#9aa5b2]"
+                      />
+                      {chunkSearchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setChunkSearchTerm("")}
+                          aria-label="Xóa từ khóa lọc nội dung"
+                          className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {showChunksLoading ? (
+                    <div className="rounded-xl border border-[#e2e7ec] bg-[#fafafa] p-6 text-center text-xs text-[#66778c]">
+                      <Loader2 size={20} className="mx-auto mb-2 motion-safe:animate-spin text-[#1d4f88]" />
+                      <p className="font-semibold">Đang tải nội dung các phân đoạn từ kho vector...</p>
+                    </div>
+                  ) : chunksError ? (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800">
+                      <span className="font-medium">{chunksError}</span>
+                      <button
+                        type="button"
+                        onClick={() => void fetchDocumentChunks(displayedDoc.id)}
+                        className="shrink-0 font-bold text-rose-900 underline hover:opacity-80"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  ) : docChunks.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#d3dbe4] p-5 text-center text-xs text-[#718294]">
+                      Không có phân đoạn nội dung nào được lưu trong kho vector cho tài liệu này.
+                    </div>
+                  ) : filteredChunks.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#d3dbe4] p-5 text-center text-xs text-[#718294]">
+                      <p>Không có phân đoạn nào khớp với từ khóa lọc hiện tại.</p>
+                      <button
+                        type="button"
+                        onClick={() => setChunkSearchTerm("")}
+                        className="mt-2 font-bold text-[#1d4f88] underline"
+                      >
+                        Xóa từ khóa lọc
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[420px] overflow-y-auto board-scroll pr-1">
+                      {filteredChunks.map((chunk) => {
+                        const breadcrumb = [chunk.chapter, chunk.section].filter(Boolean).join(" · ");
+                        return (
+                          <article
+                            key={chunk.chunkId}
+                            className="rounded-xl border border-[#e2e7ec] bg-[#fafafa] p-3.5 text-xs"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="min-w-0 break-words font-bold text-[#142747]">
+                                {formatChunkHeading(chunk)}
+                              </h4>
+                              <span className="shrink-0 rounded bg-[#eef4f9] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#1d4f88]">
+                                #{chunk.index}
+                              </span>
+                            </div>
+                            {breadcrumb && (
+                              <p className="mt-1 break-words text-[11px] font-semibold text-[#66778c]">
+                                {breadcrumb}
+                              </p>
+                            )}
+                            <p className="mt-2 whitespace-pre-line break-words leading-relaxed text-[#334155]">
+                              {chunk.content}
+                            </p>
+                          </article>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

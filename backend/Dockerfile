@@ -10,5 +10,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
+# Migration dùng cùng artifact đã build, trước khi mở cổng dịch vụ.
+COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/scripts ./scripts
 EXPOSE 3000
-CMD ["node", "dist/main"]
+CMD ["sh", "-c", "node scripts/migrate.cjs && node dist/main"]

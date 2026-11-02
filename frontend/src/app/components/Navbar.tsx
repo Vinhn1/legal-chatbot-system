@@ -1,28 +1,45 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Menu, X, ArrowUpRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { LegalLogo } from "./LegalLogo";
 
 /**
  * Thanh điều hướng công khai Veritas Legal
- * Hiển thị nhận diện thương hiệu, liên kết tra cứu và lối vào cổng quản trị
- * Đảm bảo font chữ to rõ và responsive trên mobile 390px và desktop
+ * - Cố định (fixed) ở đỉnh màn hình, đảm bảo không bao giờ bị mất đi khi cuộn trang hoặc nhảy đến các section.
+ * - Điều hướng cuộn mượt (smooth scroll) đến từng section tương ứng.
  */
 export function Navbar() {
   const { user } = useAuth();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { label: "Khám phá", href: "/#kham-pha" },
-    { label: "Cách hoạt động", href: "/#cach-hoat-dong" },
-    { label: "Minh bạch dữ liệu", href: "/#minh-bach" },
-    { label: "Câu hỏi thường gặp", href: "/#faq" },
+    { label: "Khám phá", href: "/#kham-pha", id: "kham-pha" },
+    { label: "Cách hoạt động", href: "/#cach-hoat-dong", id: "cach-hoat-dong" },
+    { label: "Minh bạch dữ liệu", href: "/#minh-bach", id: "minh-bach" },
+    { label: "Câu hỏi thường gặp", href: "/#faq", id: "faq" },
   ];
 
+  /** Xử lý cuộn trang mượt mà khi bấm vào các chức năng trên header */
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string, sectionId: string) => {
+    // Nếu đang ở trang chủ, thực hiện cuộn mượt vào section
+    if (location.pathname === "/") {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        e.preventDefault();
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.history.pushState(null, "", href);
+      }
+    }
+  };
+
   return (
-    <nav aria-label="Điều hướng chính" className="sticky top-0 z-50 border-b border-[#ccd4dd] bg-[#faf9f6]/95 backdrop-blur-md transition-colors">
-      <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 sm:px-8">
+    <nav
+      aria-label="Điều hướng chính"
+      className="fixed top-0 left-0 right-0 z-50 h-18 border-b border-[#ccd4dd] bg-[#faf9f6]/95 backdrop-blur-md shadow-xs transition-colors"
+    >
+      <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-5 sm:px-8">
         {/* Logo Veritas Legal */}
         <Link
           to="/"
@@ -48,6 +65,7 @@ export function Navbar() {
             <a
               key={link.href}
               href={link.href}
+              onClick={(e) => handleNavClick(e, link.href, link.id)}
               className="transition-colors hover:text-[#1d4f88] focus-visible:outline-2 focus-visible:outline-[#1d4f88]"
             >
               {link.label}
@@ -99,7 +117,10 @@ export function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  handleNavClick(e, link.href, link.id);
+                }}
                 className="rounded-lg px-3 py-2.5 text-sm font-semibold text-[#142747] hover:bg-[#f8f8f6]"
               >
                 {link.label}

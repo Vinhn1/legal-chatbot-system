@@ -4,12 +4,14 @@ import { Repository, ILike } from 'typeorm';
 import { User } from './user.entity';
 import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
-import { randomInt } from 'crypto';
+import { OtpService } from '../auth/otp.service';
+import { User as Account } from './user.entity';
+import { hasControlCharacters } from '../common/validation/text';
 
 /** Kiểm tra các trường được nạp từ biểu mẫu hoặc CSV trước khi ghi dữ liệu. */
 function validateAccount(dto: any): void {
   if (!dto || !/^[a-zA-Z][a-zA-Z0-9_.]{2,39}$/.test(String(dto.username || ''))) throw new BadRequestException('Tên đăng nhập không hợp lệ.');
-  if (typeof dto.name !== 'string' || !dto.name.trim() || dto.name.length > 120 || /[<>\x00-\x1f]/.test(dto.name)) throw new BadRequestException('Họ tên không hợp lệ.');
+  if (typeof dto.name !== 'string' || !dto.name.trim() || dto.name.length > 120 || (/[<>]/.test(dto.name) || hasControlCharacters(dto.name))) throw new BadRequestException('Họ tên không hợp lệ.');
   if (typeof dto.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email) || dto.email.length > 254) throw new BadRequestException('Email không hợp lệ.');
   if (dto.phone && !/^0\d{9}$/.test(String(dto.phone))) throw new BadRequestException('Số điện thoại không hợp lệ.');
   if (!['admin', 'staff'].includes(dto.role)) throw new BadRequestException('Vai trò không hợp lệ.');
@@ -23,6 +25,7 @@ export class UsersService implements OnModuleInit {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly emailService: EmailService,
+    private readonly otp?: OtpService,
   ) {}
 
   // Chỉ tạo tài khoản quản trị khi người vận hành cung cấp mật khẩu khởi tạo.
@@ -65,8 +68,11 @@ export class UsersService implements OnModuleInit {
   // 4. Cập nhật profile admin
   async updateProfile(id: number, profileData: Partial<User>): Promise<User> {
     const user = await this.getProfile(id);
-    if (profileData.name !== undefined && (typeof profileData.name !== 'string' || !profileData.name.trim() || profileData.name.length > 120 || /[<>\x00-\x1f]/.test(profileData.name))) {
+    if (profileData.name !== undefined && (typeof profileData.name !== 'string' || !profileData.name.trim() || profileData.name.length > 120 || (/[<>]/.test(profileData.name) || hasControlCharacters(profileData.name)))) {
       throw new BadRequestException('Họ tên không hợp lệ.');
+    }
+    if (profileData.email !== undefined && profileData.email !== null && (typeof profileData.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email) || profileData.email.length > 254)) {
+      throw new BadRequestException('Email không hợp lệ.');
     }
     const allowedFields: (keyof User)[] = ['name', 'email', 'dob', 'address', 'avatar'];
     for (const key of allowedFields) {
@@ -80,7 +86,7 @@ export class UsersService implements OnModuleInit {
   // 5. Đổi mật khẩu Admin có kiểm tra mật khẩu hiện tại
   async changePassword(id: number, dto: any): Promise<{ success: boolean; message: string }> {
     const { currentPassword, newPassword } = dto;
-    if (!currentPassword || !newPassword || typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 128) {
+    if (typeof currentPassword !== 'string' || !currentPassword || currentPassword.length > 128 || !newPassword || typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 128) {
       throw new BadRequestException('Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.');
     }
 
@@ -100,143 +106,50 @@ export class UsersService implements OnModuleInit {
     };
   }
 
-  // 6. Gửi mã OTP xác thực 2FA qua Email
-  async request2FaOtp(id: number): Promise<{ success: boolean; message: string }> {
+  /** Chỉ gọi sau khi AuthService đã kiểm tra mật khẩu hợp lệ. */
+  async requestLoginOtp(id: number) {
     const user = await this.getProfile(id);
-    if (!user.email) {
-      throw new BadRequestException('Tài khoản quản trị chưa được cấu hình Email.');
-    }
-
-    // Sinh mã OTP 6 số
-    const otp = randomInt(100000, 1000000).toString();
-    user.otpCode = otp;
-    user.otpCreatedAt = new Date();
-    await this.userRepository.save(user);
-
-    // Gửi email OTP
-    const sent = await this.emailService.sendOtpEmail(user.email, otp);
-    if (!sent) {
-      throw new BadRequestException('Không thể gửi email mã OTP. Vui lòng thử lại sau.');
-    }
-
-    return {
-      success: true,
-      message: 'Mã xác thực OTP đã được gửi về email quản trị thành công.',
-    };
+    if (!user.twoFaEnabled) throw new BadRequestException('Tài khoản chưa bật xác thực hai lớp.');
+    return this.otp!.issue(id, user.email!, 'login');
   }
 
-  // 7. Bật / Tắt 2FA bằng mã OTP xác thực
-  async toggle2Fa(id: number, otpCode: string): Promise<{ success: boolean; twoFaEnabled: boolean; message: string }> {
+  /** Challenge bật/tắt gắn với trạng thái đích để không đảo trạng thái ngoài ý muốn. */
+  async request2FaOtp(id: number) {
     const user = await this.getProfile(id);
-    if (!user.otpCode || !user.otpCreatedAt) {
-      throw new BadRequestException('Chưa yêu cầu gửi mã OTP xác thực.');
-    }
-
-    // Kiểm tra thời hạn OTP (3 phút)
-    const elapsed = Date.now() - new Date(user.otpCreatedAt).getTime();
-    if (elapsed > 3 * 60 * 1000) {
-      throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.');
-    }
-
-    if (user.otpCode !== otpCode) {
-      throw new BadRequestException('Mã OTP không chính xác.');
-    }
-
-    // Thay đổi trạng thái 2FA
-    user.twoFaEnabled = !user.twoFaEnabled;
-    user.otpCode = null;
-    user.otpCreatedAt = null;
-    await this.userRepository.save(user);
-
-    return {
-      success: true,
-      twoFaEnabled: user.twoFaEnabled,
-      message: user.twoFaEnabled ? 'Đã kích hoạt xác thực hai lớp (2FA) thành công.' : 'Đã hủy kích hoạt xác thực hai lớp (2FA) thành công.',
-    };
+    return this.otp!.issue(id, user.email!, 'toggle_2fa', String(!user.twoFaEnabled));
   }
 
-  // 8. Gửi OTP yêu cầu đổi số điện thoại qua Email admin
-  async requestPhoneChangeOtp(id: number, newPhone: string): Promise<{ success: boolean; message: string }> {
-    if (!newPhone || !newPhone.match(/^0\d{9}$/)) {
-      throw new BadRequestException('Số điện thoại không hợp lệ. Phải gồm 10 chữ số bắt đầu bằng số 0.');
-    }
-
-    const user = await this.getProfile(id);
-    if (!user.email) {
-      throw new BadRequestException('Tài khoản quản trị chưa được cấu hình Email.');
-    }
-
-    const otp = randomInt(100000, 1000000).toString();
-    user.otpCode = otp;
-    user.otpCreatedAt = new Date();
-    await this.userRepository.save(user);
-
-    const sent = await this.emailService.sendOtpEmail(user.email, otp);
-    if (!sent) {
-      throw new BadRequestException('Không thể gửi email mã OTP. Vui lòng thử lại sau.');
-    }
-
-    return {
-      success: true,
-      message: 'Mã xác thực đổi số điện thoại đã được gửi về email quản trị.',
-    };
+  async toggle2Fa(id: number, otpCode: string, challengeId: string) {
+    return this.otp!.verify(challengeId, otpCode, 'toggle_2fa', id, undefined, true, async (manager) => {
+      const user = await manager.findOneByOrFail(Account, { id });
+      user.twoFaEnabled = !user.twoFaEnabled;
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      await manager.save(user);
+      return { success: true, twoFaEnabled: user.twoFaEnabled, message: 'Đã cập nhật xác thực hai lớp. Vui lòng đăng nhập lại.' };
+    });
   }
 
-  // 9. Xác nhận đổi số điện thoại bằng mã OTP
-  async verifyPhoneChange(id: number, newPhone: string, otpCode: string): Promise<{ success: boolean; phone: string; message: string }> {
-    if (!newPhone || !newPhone.match(/^0\d{9}$/)) {
-      throw new BadRequestException('Số điện thoại không hợp lệ. Phải gồm 10 chữ số bắt đầu bằng số 0.');
-    }
-
+  /** Ràng buộc số điện thoại đích ngay khi phát hành challenge. */
+  async requestPhoneChangeOtp(id: number, newPhone: string) {
+    if (typeof newPhone !== 'string' || !/^0\d{9}$/.test(newPhone)) throw new BadRequestException('Số điện thoại không hợp lệ.');
     const user = await this.getProfile(id);
-    if (!user.otpCode || !user.otpCreatedAt) {
-      throw new BadRequestException('Chưa yêu cầu gửi mã OTP xác thực.');
-    }
-
-    const elapsed = Date.now() - new Date(user.otpCreatedAt).getTime();
-    if (elapsed > 3 * 60 * 1000) {
-      throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.');
-    }
-
-    if (user.otpCode !== otpCode) {
-      throw new BadRequestException('Mã OTP không chính xác.');
-    }
-
-    user.phone = newPhone;
-    user.otpCode = null;
-    user.otpCreatedAt = null;
-    await this.userRepository.save(user);
-
-    return {
-      success: true,
-      phone: user.phone,
-      message: 'Thay đổi số điện thoại liên kết thành công.',
-    };
+    return this.otp!.issue(id, user.email!, 'phone_change', newPhone);
   }
 
-  // 10. Xác thực OTP đăng nhập 2FA
-  async verify2FaOtp(username: string, otpCode: string): Promise<User> {
+  async verifyPhoneChange(id: number, newPhone: string, otpCode: string, challengeId: string) {
+    if (typeof newPhone !== 'string' || !/^0\d{9}$/.test(newPhone)) throw new BadRequestException('Số điện thoại không hợp lệ.');
+    return this.otp!.verify(challengeId, otpCode, 'phone_change', id, newPhone, true, async manager => {
+      await manager.update(Account, id, { phone: newPhone });
+      return { success: true, phone: newPhone, message: 'Đã cập nhật số điện thoại.' };
+    });
+  }
+
+  /** Thiếu challenge đăng nhập sau bước mật khẩu sẽ luôn bị từ chối. */
+  async verify2FaOtp(username: string, otpCode: string, challengeId: string): Promise<User> {
     const user = await this.findByUsername(username);
-    if (!user) {
-      throw new NotFoundException('Tài khoản không tồn tại.');
-    }
-
-    if (!user.otpCode || !user.otpCreatedAt) {
-      throw new BadRequestException('Chưa yêu cầu gửi mã OTP xác thực.');
-    }
-
-    const elapsed = Date.now() - new Date(user.otpCreatedAt).getTime();
-    if (elapsed > 3 * 60 * 1000) {
-      throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.');
-    }
-
-    if (user.otpCode !== otpCode) {
-      throw new BadRequestException('Mã OTP không chính xác.');
-    }
-
-    user.otpCode = null;
-    user.otpCreatedAt = null;
-    return await this.userRepository.save(user);
+    if (!user || !user.twoFaEnabled) throw new BadRequestException('Thông tin xác thực không hợp lệ.');
+    return this.otp!.verify(challengeId, otpCode, 'login', user.id, '', true,
+      manager => manager.findOneByOrFail(Account, { id: user.id }));
   }
 
   // 11. Lấy danh sách tài khoản quản trị và nhân viên.
@@ -287,15 +200,44 @@ export class UsersService implements OnModuleInit {
       }
     }
 
+    let tokenInvalidated = false;
+
     if (dto.password) {
+      if (typeof dto.password !== 'string' || dto.password.length < 8 || dto.password.length > 128) {
+        throw new BadRequestException('Mật khẩu phải có từ 8 đến 128 ký tự.');
+      }
       user.password = await bcrypt.hash(dto.password, 10);
+      tokenInvalidated = true;
     }
-    if (dto.name !== undefined) user.name = dto.name;
-    if (dto.phone !== undefined) user.phone = dto.phone;
-    if (dto.email !== undefined) user.email = dto.email;
+    if (dto.name !== undefined) {
+      if (typeof dto.name !== 'string' || !dto.name.trim() || dto.name.length > 120 || (/[<>]/.test(dto.name) || hasControlCharacters(dto.name))) {
+        throw new BadRequestException('Họ tên không hợp lệ.');
+      }
+      user.name = dto.name.trim();
+    }
+    if (dto.phone !== undefined && dto.phone !== null && dto.phone !== '') {
+      if (!/^0\d{9}$/.test(String(dto.phone))) throw new BadRequestException('Số điện thoại không hợp lệ.');
+      user.phone = String(dto.phone);
+    }
+    if (dto.email !== undefined && dto.email !== null && dto.email !== '') {
+      if (typeof dto.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email) || dto.email.length > 254) {
+        throw new BadRequestException('Email không hợp lệ.');
+      }
+      user.email = dto.email.toLowerCase().trim();
+    }
     if (dto.dob !== undefined) user.dob = dto.dob;
     if (dto.address !== undefined) user.address = dto.address;
-    if (dto.role !== undefined) user.role = dto.role === 'admin' ? 'admin' : 'staff';
+    if (dto.role !== undefined) {
+      const nextRole = dto.role === 'admin' ? 'admin' : 'staff';
+      if (user.role !== nextRole) {
+        user.role = nextRole;
+        tokenInvalidated = true;
+      }
+    }
+
+    if (tokenInvalidated) {
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+    }
 
     return await this.userRepository.save(user);
   }

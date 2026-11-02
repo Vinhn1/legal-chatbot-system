@@ -1,0 +1,97 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: legal_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-legal_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_DATABASE:-legal_db}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - db_backend
+
+  ai-core:
+    build:
+      context: ./ai-core
+      dockerfile: Dockerfile
+    container_name: legal_ai_core
+    restart: always
+    # AI Core chỉ nhận kết nối từ các dịch vụ trong mạng Docker nội bộ.
+    expose:
+      - "8001"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - AI_CORE_INTERNAL_TOKEN=${AI_CORE_INTERNAL_TOKEN:?AI_CORE_INTERNAL_TOKEN is required}
+      - LEGAL_RERANKER_MODEL_PATH=${LEGAL_RERANKER_MODEL_PATH:-}
+      # Mount thư mục cho phép thay file cấu hình nguyên tử, tránh EBUSY với bind mount file.
+      - RAG_CONFIG_PATH=/app/runtime_config/rag_config.json
+    volumes:
+      - ./ai-core/chroma_db:/app/chroma_db
+      - ./ai-core/static:/app/static
+      - ./ai-core/data/rag-config:/app/runtime_config
+    networks:
+      - ai_backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: legal_backend
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-legal_user}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+      - DB_DATABASE=${DB_DATABASE:-legal_db}
+      - DB_SYNCHRONIZE=${DB_SYNCHRONIZE:-false}
+      - LLM_KEY_ENCRYPTION_SECRET=${LLM_KEY_ENCRYPTION_SECRET:-}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - AI_SERVICE_BASE_URL=http://ai-core:8001
+      - AI_CORE_INTERNAL_TOKEN=${AI_CORE_INTERNAL_TOKEN:?AI_CORE_INTERNAL_TOKEN is required}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - ADMIN_SEED_PASSWORD=${ADMIN_SEED_PASSWORD}
+    depends_on:
+      - db
+      - ai-core
+    networks:
+      - db_backend
+      - ai_backend
+      - frontend_backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: legal_frontend
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_URL=/api
+    depends_on:
+      - backend
+    networks:
+      - frontend_backend
+
+volumes:
+  postgres_data:
+
+# Tách AI Core khỏi mạng của frontend và PostgreSQL; backend là cầu nối duy nhất.
+networks:
+  ai_backend:
+  db_backend:
+  frontend_backend:

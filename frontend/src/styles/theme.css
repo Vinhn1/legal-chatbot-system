@@ -55,66 +55,381 @@ html, body {
   --sidebar-ring: #0055A5;
 }
 
+/* ==========================================================================
+   HỆ THỐNG MÀU DARK MODE CHUẨN ĐEN THUẦN / TRUNG TÍNH (TRUE BLACK & NEUTRAL ZINC)
+   Đáp ứng tiêu chuẩn tương phản cao WCAG AAA, triệt tiêu sắc xanh lam slate,
+   chống chớp trắng khi hover/chọn dòng và bảo toàn giao diện mọi màn hình.
+   ========================================================================== */
+
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --background: #000000;
+  --foreground: #f4f4f5;
+  --card: #121212;
+  --card-foreground: #f4f4f5;
+  --popover: #18181b;
+  --popover-foreground: #f4f4f5;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #18181b;
+  --secondary-foreground: #f4f4f5;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #f4f4f5;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fecdd3;
+  --border: #27272a;
+  --input: #18181b;
+  --input-background: #18181b;
+  --switch-background: #3f3f46;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --ring: #3b82f6;
+  --chart-1: #60a5fa;
+  --chart-2: #34d399;
+  --chart-3: #fbbf24;
+  --chart-4: #c084fc;
+  --chart-5: #f87171;
+  --sidebar: #09090b;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #18181b;
+  --sidebar-accent-foreground: #f4f4f5;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #3b82f6;
 }
 
-/* Đồng bộ các màn hình quản trị cũ dùng màu cố định với chế độ tối. */
-.dark .admin-shell [class*="bg-white"],
-.dark .admin-shell [class*="bg-[#fcfcfb]"],
+/* 1. Khung tổng thể chế độ tối nền đen thuần */
+.dark .admin-shell,
+html.dark .admin-shell {
+  background-color: #000000 !important;
+  color: #f4f4f5 !important;
+}
+
+/* Bảo vệ tuyệt đối: Cổng công khai, Đăng nhập và Quên mật khẩu luôn giữ giao diện sáng warm paper */
+body:not(:has(.admin-shell)),
+.public-shell,
+.login-page,
+.forgot-password-page {
+  background-color: #faf9f6 !important;
+  color: #142747 !important;
+}
+
+body:not(:has(.admin-shell)) [class~="bg-white"],
+.public-shell [class~="bg-white"],
+.login-page [class~="bg-white"],
+.forgot-password-page [class~="bg-white"] {
+  background-color: #ffffff !important;
+}
+
+body:not(:has(.admin-shell)) [class~="text-[#142747]"],
+.public-shell [class~="text-[#142747]"],
+.login-page [class~="text-[#142747]"],
+.forgot-password-page [class~="text-[#142747]"] {
+  color: #142747 !important;
+}
+
+/* 2. Thanh điều hướng bên (Sidebar) và đầu trang (Header) */
+.dark .admin-shell aside {
+  background-color: #09090b !important;
+  border-color: #27272a !important;
+}
+
+.dark .admin-shell header {
+  background-color: rgba(9, 9, 11, 0.95) !important;
+  border-color: #27272a !important;
+}
+
+/* 3. Các thẻ, bảng và vùng chứa nội dung màu sáng chuyển sang đen trung tính (#121212) */
+.dark .admin-shell [class~="bg-white"],
 .dark .admin-shell [class*="bg-[#fafafa]"],
-.dark .admin-shell [class*="bg-[#f8f9fa]"] { background-color: #1e293b !important; }
-.dark .admin-shell [class*="text-[#142747]"],
-.dark .admin-shell [class*="text-[#45576d]"] { color: #f8fafc !important; }
-.dark .admin-shell [class*="text-[#56677c]"],
-.dark .admin-shell [class*="text-[#718294]"],
-.dark .admin-shell [class*="text-[#516278]"],
-.dark .admin-shell [class*="text-[#6c7d91]"],
-.dark .admin-shell [class*="text-[#8a98a8]"] { color: #cbd5e1 !important; }
-.dark .admin-shell [class*="text-[#2f7560]"] { color: #86efac !important; }
-.dark .admin-shell [class*="text-[#a17842]"],
-.dark .admin-shell [class*="text-[#a14f41]"] { color: #fdba74 !important; }
+.dark .admin-shell [class*="bg-[#f8f9fa]"],
+.dark .admin-shell [class*="bg-[#fcfcfb]"],
+.dark .admin-shell [class*="bg-[#faf9f6]"],
+.dark .admin-shell [class*="bg-[#f8f8f6]"],
+.dark .admin-shell [class*="bg-[#f4f8fc]"],
+.dark .admin-shell [class*="bg-[#fbfbfa]"],
+.dark .admin-shell [class*="bg-[#faf7f0]"],
+.dark .admin-shell .admin-card,
+.dark [role="dialog"] [class~="bg-white"],
+.dark [data-slot="sheet-content"] [class~="bg-white"],
+.dark [data-slot="dialog-content"] [class~="bg-white"] {
+  background-color: #121212 !important;
+}
+
+/* 4. Chuẩn hóa các lớp Slate xanh lam sang đen than trung tính */
+.dark .admin-shell [class*="dark:bg-slate-900"],
+.dark .admin-shell [class*="dark:bg-slate-950"],
+.dark .admin-shell [class*="dark:bg-[#0c1322]"] {
+  background-color: #09090b !important;
+}
+
+.dark .admin-shell [class*="dark:bg-slate-800"] {
+  background-color: #18181b !important;
+}
+
+/* 5. Tiêu đề bảng dữ liệu (Thead) trong chế độ tối */
+.dark .admin-shell thead,
+.dark .admin-shell thead tr,
+.dark .admin-shell thead th {
+  background-color: #161618 !important;
+  color: #a1a1aa !important;
+  border-color: #27272a !important;
+}
+
+/* 6. Trạng thái Hover của dòng bảng và nút bấm - Không bao giờ hóa trắng */
+.dark .admin-shell table tbody tr,
+html.dark .admin-shell table tbody tr {
+  background-color: transparent !important;
+}
+
+.dark .admin-shell table tbody tr:hover,
+.dark .admin-shell table tbody tr:hover > td,
+.dark .admin-shell table tbody tr:hover > th,
+html.dark .admin-shell table tbody tr:hover,
+html.dark .admin-shell table tbody tr:hover > td,
+html.dark .admin-shell table tbody tr:hover > th,
+.dark .admin-shell tr:hover,
+.dark .admin-shell tr:hover > td,
+.dark .admin-shell tr:hover th,
+.dark .admin-shell [class*="hover:bg-slate-50"]:hover,
+.dark .admin-shell [class*="hover:bg-slate-100"]:hover,
+.dark .admin-shell [class*="hover:bg-white"]:hover,
+.dark .admin-shell [class*="hover:bg-white/80"]:hover,
+.dark .admin-shell [class*="hover:bg-[#eef4f9]"]:hover,
+.dark .admin-shell [class*="hover:bg-[#eaf2fa]"]:hover,
+.dark .admin-shell [class*="hover:bg-[#e7f0f9]"]:hover,
+html.dark .admin-shell [class*="hover:bg-slate-50"]:hover,
+html.dark .admin-shell [class*="hover:bg-slate-100"]:hover {
+  background-color: #1e1e24 !important;
+}
+
+.dark .admin-shell table tbody tr:hover *,
+.dark .admin-shell tr:hover *,
+html.dark .admin-shell table tbody tr:hover * {
+  color: #f4f4f5 !important;
+}
+
+/* 7. Trạng thái dòng được chọn hoặc mục điều hướng đang kích hoạt (Selected/Active) */
+.dark .admin-shell [class*="bg-[#f0f5fa]"],
+.dark .admin-shell [class*="bg-[#f0f5fa]"] > td,
+.dark .admin-shell [class*="bg-[#e9f0f7]"],
+.dark .admin-shell [class*="bg-[#eef4f9]"],
+.dark .admin-shell [class*="bg-[#e7f0f9]"],
+.dark .admin-shell [class*="bg-[#eaf2fa]"],
+html.dark .admin-shell [class*="bg-[#f0f5fa]"],
+html.dark .admin-shell [class*="bg-[#f0f5fa]"] > td {
+  background-color: #1c222b !important;
+  border-color: #2d3848 !important;
+  color: #ffffff !important;
+}
+
+.dark .admin-shell [class*="bg-[#f0f5fa]"] *,
+.dark .admin-shell [class*="bg-[#e9f0f7]"] *,
+html.dark .admin-shell [class*="bg-[#f0f5fa]"] * {
+  color: #f4f4f5 !important;
+}
+
+/* 8. Đường viền và vách ngăn phân cách */
 .dark .admin-shell [class*="border-[#d3dbe4]"],
 .dark .admin-shell [class*="border-[#d8dee5]"],
-.dark .admin-shell [class*="border-[#cbd5df]"] { border-color: #334155 !important; }
+.dark .admin-shell [class*="border-[#cbd5df]"],
+.dark .admin-shell [class*="border-[#e2e7ec]"],
+.dark .admin-shell [class*="border-[#edf1f4]"],
+.dark .admin-shell [class*="border-[#c8daec]"],
+.dark .admin-shell [class*="border-[#c9daea]"],
+.dark .admin-shell [class*="border-[#ccdded]"],
+.dark .admin-shell [class*="border-slate-200"],
+.dark .admin-shell [class*="border-slate-300"],
+.dark .admin-shell [class*="dark:border-slate-800"],
+.dark .admin-shell [class*="dark:border-slate-700"] {
+  border-color: #27272a !important;
+}
+
+.dark .admin-shell [class*="divide-[#edf1f4]"] > * + *,
+.dark .admin-shell [class*="divide-[#e2e7ec]"] > * + *,
+.dark .admin-shell [class*="divide-slate-200"] > * + * {
+  border-color: #27272a !important;
+}
+
+/* 9. Phông chữ và màu sắc nội dung */
+.dark .admin-shell [class*="text-[#142747]"],
+.dark .admin-shell [class*="text-[#0f172a]"],
+.dark .admin-shell [class*="text-[#0f1e36]"],
+.dark .admin-shell [class*="text-[#182d4f]"],
+.dark .admin-shell [class*="text-[#1c3457]"],
+.dark .admin-shell [class*="text-[#334155]"],
+.dark .admin-shell [class*="text-[#45576d]"],
+.dark .admin-shell [class*="text-slate-900"],
+.dark .admin-shell [class*="text-slate-950"],
+.dark [role="dialog"] [class*="text-[#142747]"],
+.dark [data-slot="sheet-content"] [class*="text-[#142747]"],
+.dark [data-slot="dialog-content"] [class*="text-[#142747]"] {
+  color: #f4f4f5 !important;
+}
+
+.dark .admin-shell [class*="text-[#516278]"],
+.dark .admin-shell [class*="text-[#56677c]"],
+.dark .admin-shell [class*="text-[#64748b]"],
+.dark .admin-shell [class*="text-[#66778c]"],
+.dark .admin-shell [class*="text-[#6a7b8e]"],
+.dark .admin-shell [class*="text-[#6c7d91]"],
+.dark .admin-shell [class*="text-[#718294]"],
+.dark .admin-shell [class*="text-[#8a98a8]"],
+.dark .admin-shell [class*="text-[#94a3b8]"],
+.dark .admin-shell [class*="text-[#9aa5b2]"],
+.dark .admin-shell [class*="text-slate-500"],
+.dark .admin-shell [class*="text-slate-600"],
+.dark [role="dialog"] [class*="text-[#718294]"],
+.dark [data-slot="sheet-content"] [class*="text-[#718294]"],
+.dark [data-slot="dialog-content"] [class*="text-[#718294]"] {
+  color: #a1a1aa !important;
+}
+
+.dark .admin-shell [class*="text-[#8a785d]"],
+.dark .admin-shell [class*="text-[#8b795f]"],
+.dark .admin-shell [class*="text-[#a17842]"],
+.dark .admin-shell [class*="text-[#c29a5b]"] {
+  color: #d4b483 !important;
+}
+
+.dark .admin-shell [class*="text-[#1d4f88]"],
+.dark .admin-shell [class*="text-[#2c68ad]"],
+.dark .admin-shell [class*="text-[#3568a1]"] {
+  color: #60a5fa !important;
+}
+
+/* 10. Biểu mẫu nhập liệu */
 .dark .admin-shell input,
 .dark .admin-shell textarea,
-.dark .admin-shell select { color: #f8fafc; background-color: #1e293b; border-color: #475569; }
+.dark .admin-shell select,
+.dark [role="dialog"] input,
+.dark [role="dialog"] textarea,
+.dark [role="dialog"] select {
+  color: #ffffff !important;
+  background-color: #161618 !important;
+  border-color: #27272a !important;
+}
+
 .dark .admin-shell input::placeholder,
-.dark .admin-shell textarea::placeholder { color: #94a3b8; }
+.dark .admin-shell textarea::placeholder,
+.dark [role="dialog"] input::placeholder,
+.dark [role="dialog"] textarea::placeholder {
+  color: #71717a !important;
+}
+
+.dark .admin-shell input:focus,
+.dark .admin-shell textarea:focus,
+.dark .admin-shell select:focus,
+.dark [role="dialog"] input:focus,
+.dark [role="dialog"] textarea:focus,
+.dark [role="dialog"] select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* 11. Huy hiệu trạng thái (Badges / Status Pills) */
+.dark .admin-shell [class*="bg-slate-100"],
+.dark .admin-shell [class*="bg-[#f1f5f9]"] {
+  background-color: #27272a !important;
+  color: #e4e4e7 !important;
+  border-color: #3f3f46 !important;
+}
+
+.dark .admin-shell [class*="bg-amber-50"] {
+  background-color: #38200c !important;
+  color: #fde68a !important;
+  border-color: #78350f !important;
+}
+.dark .admin-shell [class*="bg-amber-50"] * {
+  color: #fde68a !important;
+}
+
+.dark .admin-shell [class*="bg-emerald-50"],
+.dark .admin-shell [class*="bg-emerald-100"] {
+  background-color: #063c2c !important;
+  color: #a7f3d0 !important;
+  border-color: #065f46 !important;
+}
+.dark .admin-shell [class*="bg-emerald-50"] * {
+  color: #a7f3d0 !important;
+}
+
+.dark .admin-shell [class*="bg-rose-50"] {
+  background-color: #3b0d18 !important;
+  color: #fecdd3 !important;
+  border-color: #881337 !important;
+}
+.dark .admin-shell [class*="bg-rose-50"] * {
+  color: #fecdd3 !important;
+}
+
+.dark .admin-shell [class*="bg-sky-50"] {
+  background-color: #082f49 !important;
+  color: #7dd3fc !important;
+  border-color: #0369a1 !important;
+}
+.dark .admin-shell [class*="bg-sky-50"] * {
+  color: #7dd3fc !important;
+}
+
+.dark .admin-shell [class*="bg-indigo-50"] {
+  background-color: #1e1b4b !important;
+  color: #c7d2fe !important;
+  border-color: #3730a3 !important;
+}
+.dark .admin-shell [class*="bg-indigo-50"] * {
+  color: #c7d2fe !important;
+}
+
+.dark .admin-shell [class*="bg-[#f4eddf]"] {
+  background-color: #2b2216 !important;
+  color: #fde68a !important;
+  border-color: #5c4521 !important;
+}
+.dark .admin-shell [class*="bg-[#f4eddf]"] * {
+  color: #fde68a !important;
+}
+
+/* 12. Modal / Dialog / Sheet / Popover nổi */
+.dark [role="dialog"],
+.dark [data-slot="sheet-content"],
+.dark [data-slot="dialog-content"],
+.dark [role="listbox"],
+.dark [data-radix-popper-content-wrapper] > div {
+  background-color: #121212 !important;
+  border-color: #27272a !important;
+  color: #f4f4f5 !important;
+}
+
+.dark [data-slot="sheet-header"],
+.dark [data-slot="dialog-header"] {
+  background-color: #161618 !important;
+  border-color: #27272a !important;
+}
+
+.dark [role="listbox"] button:hover,
+.dark [role="listbox"] div:hover {
+  background-color: #1e1e22 !important;
+}
+
+/* 13. Thanh cuộn trong Dark Mode */
+.dark ::-webkit-scrollbar-thumb,
+.dark .board-scroll::-webkit-scrollbar-thumb {
+  background-color: #3f3f46 !important;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+.dark .board-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #52525b !important;
+}
+
+.dark ::-webkit-scrollbar-track,
+.dark .board-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-shell *, .admin-shell *::before, .admin-shell *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

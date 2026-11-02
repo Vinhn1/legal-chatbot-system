@@ -18,6 +18,10 @@ export class ChatHistory {
   @Column({ type: 'text' })
   message: string;
 
+  // NULL xác định bản ghi lịch sử chưa đủ dữ liệu để đánh giá hoặc backfill.
+  @Column({ name: 'result_meta', type: 'jsonb', nullable: true })
+  resultMeta: Record<string, unknown> | null;
+
   // 5. Thời gian tin nhắn được gửi
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

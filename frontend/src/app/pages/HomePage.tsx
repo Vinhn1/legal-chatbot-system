@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router";
@@ -19,6 +19,15 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../../config";
 import { RobotAvatar } from "../components/RobotAvatar";
+import type { RobotState } from "../components/RobotAvatar";
+import { ScrollReveal, useAnimatedCounter, useScrollReveal } from "../components/ScrollReveal";
+
+const HOME_AVATAR_STATES: { value: Exclude<RobotState, "thinking">; label: string }[] = [
+  { value: "idle", label: "Chờ" },
+  { value: "searching", label: "Đang tra cứu" },
+  { value: "talking", label: "Đang trả lời" },
+  { value: "happy", label: "Đã tìm thấy" },
+];
 
 /** Số liệu kho luật chỉ gồm văn bản được phép công khai từ backend */
 interface PublicSummary {
@@ -85,7 +94,7 @@ const PILLARS = [
   {
     number: "02 · Truy xuất",
     title: "Tìm theo ý nghĩa",
-    description: "Kết hợp đối chiếu chính xác số hiệu Điều/Khoản và tìm kiếm ngữ nghĩa vector (Hybrid RAG) trong phạm vi dữ liệu được phép công khai.",
+    description: "Kết hợp đối chiếu chính xác số hiệu Điều, Khoản và tìm kiếm ngữ nghĩa theo nội dung trong phạm vi dữ liệu được phép công khai.",
     icon: FileSearch,
   },
   {
@@ -135,7 +144,7 @@ const FAQ_ITEMS = [
   {
     question: "Tôi kiểm tra đoạn trích dẫn văn bản bằng cách nào?",
     answer:
-      "Bên dưới mỗi câu trả lời là các thẻ nguồn (Source Badges). Khi nhấp vào thẻ, một panel trượt ra hiển thị toàn văn đoạn trích xuất, số Điều, Khoản, ngày ban hành và đường dẫn gốc.",
+      "Bên dưới mỗi câu trả lời là các thẻ nguồn đối chiếu. Khi nhấp vào thẻ, hệ thống hiển thị toàn văn đoạn trích xuất, số Điều, Khoản, ngày ban hành và đường dẫn gốc.",
   },
   {
     question: "Câu trả lời có thay thế ý kiến tư vấn của luật sư không?",
@@ -159,10 +168,53 @@ export function HomePage() {
 
   // Trạng thái của khối tương tác đối chiếu nguồn mẫu
   const [activeCaseIndex, setActiveCaseIndex] = useState(0);
+  const [demoAvatarState, setDemoAvatarState] = useState<Exclude<RobotState, "thinking">>("idle");
+  const avatarTimerRef = useRef<number[]>([]);
   const activeCase = INTERACTIVE_CASES[activeCaseIndex];
+
+  const clearDemoTimers = () => {
+    avatarTimerRef.current.forEach((id) => window.clearTimeout(id));
+    avatarTimerRef.current = [];
+  };
+
+  useEffect(() => {
+    return () => clearDemoTimers();
+  }, []);
+
+  /** Chọn trạng thái avatar trực tiếp trên thẻ mẫu */
+  const handleSelectDemoAvatarState = (nextState: Exclude<RobotState, "thinking">) => {
+    clearDemoTimers();
+    setDemoAvatarState(nextState);
+    if (nextState === "happy") {
+      const t = window.setTimeout(() => setDemoAvatarState("idle"), 2800);
+      avatarTimerRef.current.push(t);
+    }
+  };
+
+  /** Khi đổi câu hỏi mẫu, chạy chuỗi trạng thái: Đang tra cứu -> Đang trả lời -> Đã tìm thấy -> Chờ */
+  const handleSelectCase = (idx: number) => {
+    setActiveCaseIndex(idx);
+    clearDemoTimers();
+    setDemoAvatarState("searching");
+    const t1 = window.setTimeout(() => {
+      setDemoAvatarState("talking");
+      const t2 = window.setTimeout(() => {
+        setDemoAvatarState("happy");
+        const t3 = window.setTimeout(() => setDemoAvatarState("idle"), 2800);
+        avatarTimerRef.current.push(t3);
+      }, 900);
+      avatarTimerRef.current.push(t2);
+    }, 550);
+    avatarTimerRef.current.push(t1);
+  };
 
   // Trạng thái mở/đóng của FAQ
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  // Quan sát khi cuộn tới mục minh bạch dữ liệu để kích hoạt bộ đếm số sống động
+  const { ref: summarySectionRef, isRevealed: summaryRevealed } = useScrollReveal<HTMLDivElement>(0.15);
+  const animatedDocCount = useAnimatedCounter(summary?.document_count ?? 0, summaryRevealed, 1000);
+  const animatedArticleCount = useAnimatedCounter(summary?.article_count ?? 0, summaryRevealed, 1200);
 
   useEffect(() => {
     let isCurrent = true;
@@ -222,73 +274,100 @@ export function HomePage() {
       </header>
 
       {/* 2. Hero Section: Editorial Headline & Interactive Evidence Preview */}
-      <section id="kham-pha" className="mx-auto max-w-7xl px-5 pt-10 pb-16 sm:px-8 md:pt-14 md:pb-20">
+      <section id="kham-pha" className="scroll-mt-24 mx-auto max-w-7xl px-5 pt-10 pb-16 sm:px-8 md:pt-14 md:pb-20">
         <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-14">
           {/* Cột trái: Thông điệp lớn & CTA */}
           <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#dfd4c0] bg-[#f6f0e5] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[#795e37]">
-              <span className="h-2 w-2 rounded-full bg-[#b48b50] animate-pulse" />
-              Cổng tra cứu văn bản pháp luật Việt Nam
-            </div>
+            <ScrollReveal delay={1}>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#dfd4c0] bg-[#f6f0e5] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[#795e37]">
+                <span className="h-2 w-2 rounded-full bg-[#b48b50] animate-pulse" />
+                Cổng tra cứu văn bản pháp luật Việt Nam
+              </div>
+            </ScrollReveal>
 
-            <h1 className="font-editorial mt-6 text-4xl font-semibold leading-[1.08] tracking-[-0.035em] text-[#112444] sm:text-5xl lg:text-6xl">
-              Tìm quy định.
-              <br />
-              <span className="text-[#1d4f88]">Lần theo nguồn.</span>
-            </h1>
+            <ScrollReveal delay={2}>
+              <h1 className="font-editorial mt-6 text-4xl font-semibold leading-[1.08] tracking-[-0.035em] text-[#112444] sm:text-5xl lg:text-6xl">
+                Tìm quy định.
+                <br />
+                <span className="text-[#1d4f88]">Lần theo nguồn.</span>
+              </h1>
+            </ScrollReveal>
 
-            <p className="mt-5 text-base leading-relaxed text-[#516278] sm:text-lg">
-              Đặt câu hỏi tự nhiên bằng tiếng Việt, nhận định được trích xuất gắn liền với nguồn quy phạm pháp luật và tự đối chiếu nguyên văn trước khi áp dụng.
-            </p>
+            <ScrollReveal delay={3}>
+              <p className="mt-5 text-base leading-relaxed text-[#516278] sm:text-lg">
+                Đặt câu hỏi tự nhiên bằng tiếng Việt, nhận định được trích xuất gắn liền với nguồn quy phạm pháp luật và tự đối chiếu nguyên văn trước khi áp dụng.
+              </p>
+            </ScrollReveal>
 
             {/* Nút hành động */}
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                to="/embed"
-                className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-[#1d4f88] px-7 text-sm font-bold text-white shadow-md shadow-[#1d4f88]/20 transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-[#153b66] active:scale-[0.98] motion-reduce:transition-none sm:text-base"
-              >
-                Khám phá tra cứu <ArrowRight size={18} />
-              </Link>
-              <Link
-                to="/login"
-                className="inline-flex h-13 items-center justify-center gap-2 rounded-xl border border-[#cbd4dd] bg-white px-6 text-sm font-bold text-[#142747] shadow-xs transition-colors hover:bg-[#f8f8f6] active:scale-[0.98] sm:text-base"
-              >
-                Cổng quản trị <ArrowUpRight size={17} />
-              </Link>
-            </div>
+            <ScrollReveal delay={4}>
+              <div className="mt-8 flex flex-wrap gap-4">
+                <Link
+                  to="/embed"
+                  className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-[#1d4f88] px-7 text-sm font-bold text-white shadow-md shadow-[#1d4f88]/20 transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-[#153b66] active:scale-[0.98] motion-reduce:transition-none sm:text-base"
+                >
+                  Khám phá tra cứu <ArrowRight size={18} />
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex h-13 items-center justify-center gap-2 rounded-xl border border-[#cbd4dd] bg-white px-6 text-sm font-bold text-[#142747] shadow-xs transition-colors hover:bg-[#f8f8f6] active:scale-[0.98] sm:text-base"
+                >
+                  Cổng quản trị <ArrowUpRight size={17} />
+                </Link>
+              </div>
 
-            {/* Các cam kết minh bạch */}
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-semibold text-[#5c6d82] sm:text-sm">
-              <span className="inline-flex items-center gap-2">
-                <Check size={16} className="text-[#2f7560]" />
-                Trích dẫn có thể mở xem trực tiếp
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Check size={16} className="text-[#2f7560]" />
-                Trạng thái hiệu lực rõ ràng
-              </span>
-            </div>
+              {/* Các cam kết minh bạch */}
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-semibold text-[#5c6d82] sm:text-sm">
+                <span className="inline-flex items-center gap-2">
+                  <Check size={16} className="text-[#2f7560]" />
+                  Trích dẫn có thể mở xem trực tiếp
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <Check size={16} className="text-[#2f7560]" />
+                  Trạng thái hiệu lực rõ ràng
+                </span>
+              </div>
 
-            {/* Lưu ý pháp lý */}
-            <p className="mt-8 border-l-2 border-[#c29a5b] pl-4 text-xs leading-relaxed text-[#738196] sm:text-sm">
-              Công cụ hỗ trợ tra cứu và đối chiếu, không thay thế ý kiến tư vấn pháp lý chính thức. Luôn kiểm tra văn bản gốc và phạm vi áp dụng thực tế.
-            </p>
+              {/* Lưu ý pháp lý */}
+              <p className="mt-8 border-l-2 border-[#c29a5b] pl-4 text-xs leading-relaxed text-[#738196] sm:text-sm">
+                Công cụ hỗ trợ tra cứu và đối chiếu, không thay thế ý kiến tư vấn pháp lý chính thức. Luôn kiểm tra văn bản gốc và phạm vi áp dụng thực tế.
+              </p>
+            </ScrollReveal>
           </div>
 
           {/* Cột phải: Mẫu đối chiếu nguồn tương tác (Interactive Evidence Workbench) */}
-          <div className="rounded-2xl border border-[#cbd4dd] bg-white p-5 shadow-[0_22px_55px_-30px_rgba(21,42,70,.28)] sm:p-7">
-            {/* Header của thẻ mẫu */}
+          <ScrollReveal delay={2} className="rounded-2xl border border-[#cbd4dd] bg-white p-5 shadow-[0_22px_55px_-30px_rgba(21,42,70,.28)] hover-card-elevate sm:p-7">
+            {/* Header của thẻ mẫu với Avatar Robot và bộ nút thử 4 trạng thái */}
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#e7e9eb] pb-4">
               <div className="flex items-center gap-3">
-                <RobotAvatar size={38} state="idle" />
+                <div className="rounded-full p-0.5 robot-aura">
+                  <RobotAvatar size={46} state={demoAvatarState} />
+                </div>
                 <div>
                   <div className="text-sm font-bold text-[#142747]">Mẫu đối chiếu nguồn</div>
-                  <div className="text-xs text-[#7a8897]">Chọn câu hỏi mẫu bên dưới để xem luồng trích dẫn</div>
+                  <div className="text-xs text-[#7a8897]">Chọn câu hỏi mẫu hoặc bấm trạng thái để xem hoạt ảnh</div>
                 </div>
               </div>
-              <span className="rounded-full border border-[#e7d6b7] bg-[#fbf5e9] px-3 py-1 text-xs font-bold text-[#806137]">
-                THỬ NGHIỆM TƯƠNG TÁC
-              </span>
+              <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Trạng thái avatar mẫu">
+                {HOME_AVATAR_STATES.map((item) => {
+                  const active = demoAvatarState === item.value;
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => handleSelectDemoAvatarState(item.value)}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all ${
+                        active
+                          ? "border-[#2f4fd8] bg-[#2f4fd8] font-semibold text-white"
+                          : "border-[#d6def0] bg-white text-[#142747] hover:-translate-y-0.5"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Bộ chọn câu hỏi mẫu */}
@@ -297,8 +376,8 @@ export function HomePage() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveCaseIndex(idx)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                  onClick={() => handleSelectCase(idx)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 active:scale-[0.97] ${
                     activeCaseIndex === idx
                       ? "bg-[#1d4f88] text-white shadow-xs"
                       : "bg-[#eef2f6] text-[#516278] hover:bg-[#e4e9f0]"
@@ -309,8 +388,8 @@ export function HomePage() {
               ))}
             </div>
 
-            {/* Nội dung đối chiếu 2 cột (hoặc stacked trên mobile) */}
-            <div className="grid gap-4 md:grid-cols-[1.1fr_1fr]">
+            {/* Nội dung đối chiếu 2 cột với animation đổi case mượt mà */}
+            <div key={activeCase.id} className="animate-case-swap grid gap-4 md:grid-cols-[1.1fr_1fr]">
               {/* Bên hỏi & Nhận định */}
               <div className="flex flex-col gap-3">
                 <div className="rounded-xl bg-[#f2f4f6] p-4">
@@ -371,13 +450,13 @@ export function HomePage() {
               </span>
               <span className="font-semibold text-[#a17842]">Mẫu thử nghiệm</span>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* 3. Khối Tìm kiếm / Tra cứu nhanh ("Hỏi thử ngay") */}
       <section className="mx-auto -mt-4 max-w-5xl px-5 sm:px-8">
-        <div className="rounded-2xl border border-[#cbd4dd] bg-white p-6 shadow-[0_20px_60px_-25px_rgba(15,23,42,.15)] sm:p-8">
+        <ScrollReveal className="rounded-2xl border border-[#cbd4dd] bg-white p-6 shadow-[0_20px_60px_-25px_rgba(15,23,42,.15)] hover-card-elevate sm:p-8">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[#1d4f88]">
             <Search size={16} /> Bắt đầu tra cứu pháp luật
           </div>
@@ -389,7 +468,7 @@ export function HomePage() {
           </p>
 
           <form onSubmit={handleSearch} className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-[#ccd4dd] bg-[#f8f9fa] px-4 focus-within:border-[#1d4f88] focus-within:bg-white focus-within:ring-3 focus-within:ring-[#1d4f88]/15 transition-all">
+            <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-[#ccd4dd] bg-[#f8f9fa] px-4 transition-all duration-200 focus-within:border-[#1d4f88] focus-within:bg-white focus-within:ring-3 focus-within:ring-[#1d4f88]/15">
               <Search size={20} className="shrink-0 text-[#7a8898]" />
               <input
                 aria-label="Câu hỏi pháp luật cần tra cứu"
@@ -399,19 +478,19 @@ export function HomePage() {
                   setValidation("");
                 }}
                 placeholder="Ví dụ: Điều kiện hưởng bảo hiểm xã hội một lần mới nhất?"
-                className="h-13 w-full min-w-0 bg-transparent py-2 text-sm sm:text-base text-[#142747] outline-none placeholder:text-[#8896a6]"
+                className="h-13 w-full min-w-0 bg-transparent py-2 text-sm text-[#142747] outline-none placeholder:text-[#8896a6] sm:text-base"
               />
             </div>
             <button
               type="submit"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-[#1d4f88] px-7 text-sm sm:text-base font-bold text-white shadow-sm transition-[background-color,transform] hover:bg-[#153b66] active:scale-[0.98] motion-reduce:transition-none"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-[#1d4f88] px-7 text-sm font-bold text-white shadow-sm transition-[background-color,transform] hover:bg-[#153b66] active:scale-[0.98] motion-reduce:transition-none sm:text-base"
             >
               Tra cứu <ArrowRight size={17} />
             </button>
           </form>
 
           {validation && (
-            <p role="alert" className="mt-3 text-xs font-bold text-rose-700">
+            <p role="alert" className="mt-3 text-xs font-bold text-rose-700 animate-case-swap">
               {validation}
             </p>
           )}
@@ -428,58 +507,57 @@ export function HomePage() {
                 key={sample}
                 type="button"
                 onClick={() => navigate(`/embed?question=${encodeURIComponent(sample)}`)}
-                className="rounded-full border border-[#cbd5df] bg-[#fafaf8] px-3.5 py-1.5 text-xs font-semibold text-[#40546d] hover:border-[#1d4f88] hover:bg-white hover:text-[#1d4f88] transition-colors"
+                className="rounded-full border border-[#cbd5df] bg-[#fafaf8] px-3.5 py-1.5 text-xs font-semibold text-[#40546d] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#1d4f88] hover:bg-white hover:text-[#1d4f88] hover:shadow-xs active:scale-[0.97]"
               >
                 {sample}
               </button>
             ))}
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* 4. Ba Trụ cột Giá trị (3 Pillars) */}
       <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 md:py-24">
-        <div className="text-center max-w-3xl mx-auto">
+        <ScrollReveal className="mx-auto max-w-3xl text-center">
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#8a785d]">
             NGUYÊN TẮC HỆ THỐNG
           </div>
           <h2 className="font-editorial mt-2 text-3xl font-semibold text-[#142747] sm:text-4xl">
             Đọc luật với nguồn và ngữ cảnh rõ ràng
           </h2>
-          <p className="mt-3 text-sm sm:text-base text-[#56677c]">
+          <p className="mt-3 text-sm text-[#56677c] sm:text-base">
             Được thiết kế nhằm loại bỏ việc đoán mò văn bản, giữ nguyên sợi chỉ liên kết từ văn bản gốc đến từng câu trả lời.
           </p>
-        </div>
+        </ScrollReveal>
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {PILLARS.map((pillar) => (
-            <article
-              key={pillar.number}
-              className="rounded-2xl border border-[#d3dbe4] bg-white p-6 sm:p-7 shadow-xs transition-all hover:-translate-y-1 hover:shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#eef4f9] text-[#1d4f88]">
-                  <pillar.icon size={22} />
-                </span>
-                <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#8a785d]">
-                  {pillar.number}
-                </span>
-              </div>
-              <h3 className="font-editorial mt-5 text-2xl font-semibold text-[#142747]">
-                {pillar.title}
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-[#56677c]">
-                {pillar.description}
-              </p>
-            </article>
+          {PILLARS.map((pillar, idx) => (
+            <ScrollReveal key={pillar.number} delay={(idx + 1) as 1 | 2 | 3}>
+              <article className="group rounded-2xl border border-[#d3dbe4] bg-white p-6 shadow-xs hover-card-elevate sm:p-7">
+                <div className="flex items-center justify-between">
+                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#eef4f9] text-[#1d4f88] transition-all duration-300 group-hover:scale-105 group-hover:bg-[#1d4f88] group-hover:text-white">
+                    <pillar.icon size={22} />
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#8a785d]">
+                    {pillar.number}
+                  </span>
+                </div>
+                <h3 className="font-editorial mt-5 text-2xl font-semibold text-[#142747]">
+                  {pillar.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-[#56677c]">
+                  {pillar.description}
+                </p>
+              </article>
+            </ScrollReveal>
           ))}
         </div>
       </section>
 
       {/* 5. Quy trình 4 chặng: Đường đi của một nguồn */}
-      <section id="cach-hoat-dong" className="border-y border-[#ccd4dd] bg-[#f4f6f8] py-16 sm:py-20">
+      <section id="cach-hoat-dong" className="scroll-mt-24 border-y border-[#ccd4dd] bg-[#f4f6f8] py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <ScrollReveal className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="text-xs font-bold uppercase tracking-[0.18em] text-[#8a785d]">
                 HOW IT WORKS · 4 CHẶNG
@@ -491,53 +569,58 @@ export function HomePage() {
             <span className="text-xs font-semibold text-[#6d7e92]">
               Tiếp nhận ➔ Lập chỉ mục ➔ Đặt câu hỏi ➔ Đối chiếu
             </span>
-          </div>
+          </ScrollReveal>
 
+          {/* Grid các chặng với hiệu ứng xuất hiện so le tuần tự */}
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {LIFECYCLE_STEPS.map((step) => (
-              <div
-                key={step.step}
-                className="rounded-2xl border border-[#d3dbe4] bg-white p-5 shadow-xs transition-transform hover:-translate-y-0.5"
-              >
-                <div className="text-xs font-bold text-[#a17842]">{step.step}</div>
-                <div className="mt-2 text-base font-bold text-[#142747]">{step.title}</div>
-                <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-[#5e6f82]">
-                  {step.desc}
-                </p>
-              </div>
+            {LIFECYCLE_STEPS.map((step, idx) => (
+              <ScrollReveal key={step.step} delay={(idx + 1) as 1 | 2 | 3 | 4}>
+                <div className="group rounded-2xl border border-[#d3dbe4] bg-white p-5 shadow-xs hover-card-elevate">
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-full bg-[#fbf5e9] border border-[#ead8b7] px-2.5 py-0.5 text-xs font-bold text-[#806137]">
+                      {step.step}
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#ccd6e0] transition-colors duration-300 group-hover:bg-[#1d4f88]" />
+                  </div>
+                  <div className="mt-3 text-base font-bold text-[#142747]">{step.title}</div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-[#5e6f82] sm:text-sm">
+                    {step.desc}
+                  </p>
+                </div>
+              </ScrollReveal>
             ))}
           </div>
 
           {/* Banner Nhánh kiểm soát ngoại lệ từ Canvas */}
-          <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#dfd4c0] bg-[#faf6ed] p-4 text-xs sm:text-sm text-[#715c3e]">
-            <CircleAlert size={18} className="shrink-0 text-[#a17842] mt-0.5" />
+          <ScrollReveal delay={2} className="mt-6 flex items-start gap-3 rounded-xl border border-[#dfd4c0] bg-[#faf6ed] p-4 text-xs text-[#715c3e] sm:text-sm">
+            <CircleAlert size={18} className="mt-0.5 shrink-0 text-[#a17842]" />
             <div>
               <strong>Nhánh kiểm soát chất lượng:</strong> Nếu chất lượng OCR hoặc metadata văn bản chưa đạt chuẩn, hệ thống tự động đưa vào hàng đợi Chờ duyệt; tài liệu chưa xác minh sẽ không bao giờ được trình bày như nguồn đã kiểm chứng.
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* 6. Minh bạch Dữ liệu (Data Transparency Table) */}
-      <section id="minh-bach" className="mx-auto max-w-7xl px-5 py-16 sm:px-8 md:py-24">
-        <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-14 items-center">
-          <div>
+      <section id="minh-bach" ref={summarySectionRef} className="scroll-mt-24 mx-auto max-w-7xl px-5 py-16 sm:px-8 md:py-24">
+        <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-14">
+          <ScrollReveal delay={1}>
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-[#8a785d]">
               MINH BẠCH DỮ LIỆU
             </div>
             <h2 className="font-editorial mt-2 text-3xl font-semibold text-[#142747] sm:text-4xl">
               Biết rõ phạm vi trước khi tra cứu
             </h2>
-            <p className="mt-4 text-sm sm:text-base leading-relaxed text-[#56677c]">
+            <p className="mt-4 text-sm leading-relaxed text-[#56677c] sm:text-base">
               Hệ thống chỉ hiển thị số liệu từ kho văn bản công khai thực tế đã được đồng bộ. Bất kỳ tài liệu nào thuộc phạm vi nội bộ đều không thể bị rò rỉ ở cổng tra cứu công khai.
             </p>
 
             <div className="mt-6 rounded-xl border border-[#d3dbe4] bg-[#f8f9fa] p-4 text-xs text-[#627387]">
-              <Database size={16} className="inline mr-1 text-[#1d4f88]" /> Số liệu được tổng hợp trực tiếp từ endpoint công khai: <code className="font-mono text-[#1d4f88]">/chat/public-summary</code>
+              <Database size={16} className="mr-1 inline text-[#1d4f88]" /> Số liệu được tổng hợp trực tiếp từ endpoint công khai: <code className="font-mono text-[#1d4f88]">/chat/public-summary</code>
             </div>
-          </div>
+          </ScrollReveal>
 
-          <div className="rounded-2xl border border-[#cbd4dd] bg-white p-6 shadow-sm">
+          <ScrollReveal delay={2} className="rounded-2xl border border-[#cbd4dd] bg-white p-6 shadow-sm hover-card-elevate">
             <div className="divide-y divide-[#e7e8e7]">
               <div className="flex items-center justify-between py-3.5">
                 <span className="text-sm font-medium text-[#56677c]">Phạm vi tra cứu</span>
@@ -550,7 +633,7 @@ export function HomePage() {
                     ? "Đang kết nối..."
                     : summaryState === "error"
                     ? "Chưa có dữ liệu"
-                    : `${summary?.document_count ?? 0} văn bản · ${summary?.article_count ?? 0} Điều`}
+                    : `${animatedDocCount} văn bản · ${animatedArticleCount} Điều`}
                 </span>
               </div>
               <div className="flex items-center justify-between py-3.5">
@@ -565,16 +648,21 @@ export function HomePage() {
               </div>
               <div className="flex items-center justify-between py-3.5">
                 <span className="text-sm font-medium text-[#56677c]">Trạng thái xác minh</span>
-                <span className="rounded-full border border-[#ead8b7] bg-[#fbf4e8] px-3 py-1 text-xs font-bold text-[#80643d]">
-                  {summaryState === "success" && (summary?.document_count ?? 0) > 0
-                    ? "Đã lập chỉ mục"
-                    : "Đang chờ dữ liệu"}
+                <span className="inline-flex items-center rounded-full border border-[#ead8b7] bg-[#fbf4e8] px-3 py-1 text-xs font-bold text-[#80643d]">
+                  {summaryState === "success" && (summary?.document_count ?? 0) > 0 ? (
+                    <>
+                      <span className="mr-1.5 h-2 w-2 rounded-full bg-emerald-500 status-dot-pulse" />
+                      Đã lập chỉ mục
+                    </>
+                  ) : (
+                    "Đang chờ dữ liệu"
+                  )}
                 </span>
               </div>
             </div>
 
             {summaryState === "error" && (
-              <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-900 flex justify-between items-center">
+              <div className="mt-4 flex items-center justify-between rounded-lg bg-amber-50 p-3 text-xs text-amber-900 animate-case-swap">
                 <span>Không thể tải số liệu thống kê kho luật.</span>
                 <button
                   type="button"
@@ -585,35 +673,35 @@ export function HomePage() {
                 </button>
               </div>
             )}
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* 7. Khối Câu hỏi thường gặp (FAQ) — Theme Navy Hoàng gia từ Canvas */}
-      <section id="faq" className="border-t border-[#1d3558] bg-[#142747] py-16 text-white sm:py-20">
+      <section id="faq" className="scroll-mt-24 border-t border-[#1d3558] bg-[#142747] py-16 text-white sm:py-20">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
-            <div>
+            <ScrollReveal delay={1}>
               <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#d5b576]">
                 CÂU HỎI THƯỜNG GẶP
               </div>
-              <h2 className="font-editorial mt-3 text-3xl font-semibold leading-tight sm:text-4xl text-white">
+              <h2 className="font-editorial mt-3 text-3xl font-semibold leading-tight text-white sm:text-4xl">
                 Minh bạch cả điều hệ thống chưa biết.
               </h2>
-              <p className="mt-4 text-sm sm:text-base leading-relaxed text-[#becbd9]">
+              <p className="mt-4 text-sm leading-relaxed text-[#becbd9] sm:text-base">
                 Chúng tôi công khai mọi giới hạn kỹ thuật và pháp lý để người sử dụng luôn có căn cứ chính xác nhất.
               </p>
               <div className="mt-8">
                 <Link
                   to="/embed"
-                  className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#f4efe4] px-6 text-sm font-bold text-[#142747] shadow-sm hover:bg-white"
+                  className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#f4efe4] px-6 text-sm font-bold text-[#142747] shadow-sm transition-[background-color,transform] hover:bg-white hover:-translate-y-0.5 active:scale-[0.98] motion-reduce:transition-none"
                 >
                   Bắt đầu tra cứu ngay <ArrowRight size={17} />
                 </Link>
               </div>
-            </div>
+            </ScrollReveal>
 
-            <div className="divide-y divide-white/15 border-y border-white/15">
+            <ScrollReveal delay={2} className="divide-y divide-white/15 border-y border-white/15">
               {FAQ_ITEMS.map((item, index) => {
                 const isOpen = openFaqIndex === index;
                 return (
@@ -622,22 +710,25 @@ export function HomePage() {
                       type="button"
                       onClick={() => setOpenFaqIndex(isOpen ? null : index)}
                       aria-expanded={isOpen}
-                      className="flex w-full items-center justify-between gap-4 text-left text-sm sm:text-base font-semibold text-white focus-visible:outline-2 focus-visible:outline-[#d5b576]"
+                      className="flex w-full items-center justify-between gap-4 text-left text-sm font-semibold text-white transition-colors duration-200 hover:text-[#d5b576] focus-visible:outline-2 focus-visible:outline-[#d5b576] sm:text-base"
                     >
                       <span>{item.question}</span>
-                      <span className="shrink-0 text-[#d5b576] transition-transform duration-200">
-                        <ChevronDown size={18} className={isOpen ? "rotate-180" : ""} />
+                      <span className="shrink-0 text-[#d5b576]">
+                        <ChevronDown size={18} className={`transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
                       </span>
                     </button>
-                    {isOpen && (
-                      <p className="mt-3 text-xs sm:text-sm leading-relaxed text-[#becbd9] animate-fade-in-up">
-                        {item.answer}
-                      </p>
-                    )}
+                    {/* Accordion mở/đóng mượt mà bằng CSS Grid height expansion */}
+                    <div className={`faq-grid-wrapper ${isOpen ? "is-open" : ""}`}>
+                      <div className="faq-grid-inner">
+                        <p className="pt-3 text-xs leading-relaxed text-[#becbd9] sm:text-sm">
+                          {item.answer}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
-            </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>

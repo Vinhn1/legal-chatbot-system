@@ -1,0 +1,68 @@
+# CodeRabbit AI Configuration
+# Docs: https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: "vi"  # Review bằng tiếng Việt
+
+reviews:
+  # Tự động review tất cả PR (trừ draft)
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+
+  # Bỏ qua các file không cần review
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/__pycache__/**"
+    - "!**/dist/**"
+    - "!**/venv/**"
+    - "!**/chroma_db/**"
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!**/*.json"           # Bỏ qua JSON data files
+    - "!**/eval_accuracy_report*"
+    - "!**/dynamic_suggestions.json"
+    - "!**/rag_config.json"
+    - "!**/*.md"
+
+  # Hướng dẫn review tùy chỉnh cho dự án MobiFone
+  instructions: |
+    Đây là hệ thống MobiFone Chatbot với kiến trúc:
+    - Frontend: React + TypeScript + Vite + TailwindCSS + shadcn/ui
+    - Backend: NestJS + TypeScript + TypeORM + PostgreSQL
+    - AI Core: Python FastAPI + ChromaDB (RAG pipeline) + Gemini/OpenAI API
+    
+    Khi review code, hãy tập trung vào:
+    
+    ## Ưu tiên cao (AI Core - Python):
+    - Kiểm tra xử lý lỗi khi gọi Gemini/OpenAI API (timeout, rate limit)
+    - Bảo mật: không để lộ API key trong log
+    - Hiệu năng RAG pipeline (chunk size, embedding cache)
+    - Xử lý encoding tiếng Việt đúng cách (UTF-8)
+    - Quản lý ChromaDB collection (tránh memory leak)
+    
+    ## Ưu tiên cao (Backend - NestJS):
+    - Kiểm tra JWT authentication đúng cách
+    - Validate input đầu vào (DTO validation)
+    - Xử lý lỗi và HTTP status code phù hợp
+    - Không để lộ thông tin nhạy cảm trong response
+    - TypeORM query tối ưu (tránh N+1)
+    
+    ## Ưu tiên cao (Frontend - React):
+    - Không để lộ API endpoint hoặc token trong client-side code
+    - Xử lý loading/error state đầy đủ
+    - Accessibility (ARIA labels cho chatbot UI)
+    
+    ## Chung:
+    - Đặt tên biến/hàm rõ ràng, có ý nghĩa
+    - Tránh comment thừa hoặc code dead
+    - Kiểm tra edge case (null, undefined, empty string)
+
+  # Cấu hình profile review
+  profile: "chill"  # assertive | chill | default
+
+chat:
+  # Cho phép reply @coderabbitai trong PR comment
+  auto_reply: true

@@ -16,6 +16,7 @@ import { AdminAnalyticsPage } from "./pages/admin/AdminAnalyticsPage";
 import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
 import { AdminProfilePage } from "./pages/admin/AdminProfilePage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
+import { AdminBackupsPage } from "./pages/admin/AdminBackupsPage";
 
 export const router = createBrowserRouter([
   {
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: "settings", Component: AdminSettingsPage },
       { path: "profile", Component: AdminProfilePage },
       { path: "users", element: <ProtectedRoute allowedRoles={["admin"]}><AdminUsersPage /></ProtectedRoute> },
+      { path: "backups", element: <ProtectedRoute allowedRoles={["admin"]}><AdminBackupsPage /></ProtectedRoute> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },

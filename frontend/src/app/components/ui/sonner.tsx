@@ -1,16 +1,18 @@
 "use client";
 
-import { useTheme } from "next-themes";
+import { useContext } from "react";
 import { Toaster as Sonner } from "sonner";
 // Kiểu cấu hình của bộ thông báo được tách khỏi giá trị runtime.
 import type { ToasterProps } from "sonner";
+import { ThemeContext } from "../../context/theme-state";
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  // Đồng bộ với giao diện thực tế của ứng dụng: chỉ tối khi đang ở khu vực quản trị.
+  const theme = useContext(ThemeContext)?.applied ?? "light";
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme}
       className="toaster group"
       style={
         {

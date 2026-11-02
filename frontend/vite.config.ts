@@ -36,12 +36,19 @@ export default defineConfig({
     host: '0.0.0.0',
     // Cổng mặc định của Frontend khi chạy npm run dev.
     port: 5174,
+    // Theo dõi thay đổi tệp trên hệ thống tệp gắn kết WSL2/Windows.
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
-        timeout: 180000,
+        // Mở rộng thời gian chờ proxy khớp với cấu hình Nginx cho tác vụ AI OCR văn bản dài.
+        timeout: 600000,
+        proxyTimeout: 600000,
       },
     },
   },

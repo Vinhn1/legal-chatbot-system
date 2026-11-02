@@ -1,14 +1,17 @@
-import { HttpException, HttpStatus, Injectable, Optional } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { ChatHistoryService } from '../chat-history/chat-history.service';
 import { LegalService } from '../legal/legal.service';
-import { AccessScope, EffectiveStatus, LegalDocumentType } from '../legal/entities/legal-document.entity';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ModelConfig } from './model-config.entity';
+import { IngestionJobsService } from '../legal/ingestion-jobs.service';
+import { publicSession } from './public-session';
+import { jwtSecret } from '../auth/security-config';
+import { hasControlCharacters } from '../common/validation/text';
 
 /** Dữ liệu nguồn do AI Core truy xuất trực tiếp từ collection pháp luật. */
 interface LegalSource {
@@ -43,8 +46,14 @@ function matchesUnit(label: string, prefix: string, number?: string): boolean {
   return label === (number ? `${prefix} ${number}` : '');
 }
 
+/** Phân biệt lỗi lưu hội thoại với lỗi mô hình để không ghi lặp một lượt hỏi. */
+class HistoryPersistenceError extends HttpException {
+  constructor() { super('Không thể lưu hội thoại.', HttpStatus.SERVICE_UNAVAILABLE); }
+}
+
 @Injectable()
-export class ChatService {
+export class ChatService implements OnModuleInit {
+  private readonly logger = new Logger(ChatService.name);
   private readonly aiServiceBaseUrl: string;
   private readonly aiRequestTimeoutMs: number;
 
@@ -54,10 +63,21 @@ export class ChatService {
     private readonly chatHistoryService: ChatHistoryService,
     @Optional() private readonly legalService?: LegalService,
     @Optional() @InjectRepository(ModelConfig) private readonly modelConfigRepository?: Repository<ModelConfig>,
+    @Optional() private readonly jobs?: IngestionJobsService,
   ) {
     this.aiServiceBaseUrl = this.configService.get<string>('AI_SERVICE_BASE_URL', 'http://localhost:8001');
-    this.aiRequestTimeoutMs = this.configService.get<number>('AI_SERVICE_TIMEOUT_MS', 60000);
+    this.aiRequestTimeoutMs = Number(this.configService.get('AI_SERVICE_TIMEOUT_MS', 90000)) || 90000;
   }
+
+  async onModuleInit() {
+    // Tự động đồng bộ khóa nhúng sang AI Core runtime khi khởi động
+    setTimeout(() => {
+      void this.syncEmbeddingConfigToAiCore();
+    }, 2000);
+  }
+
+  /** Không cho phiên UUID do người dùng cung cấp đọc lịch sử của phiên khác. */
+  authorizeSession(id?: string, token?: string) { return publicSession(jwtSecret(this.configService), id, token); }
 
   private getAiServiceUrl(path: string): string {
     return `${this.aiServiceBaseUrl}${path}`;
@@ -88,14 +108,24 @@ export class ChatService {
   async getModelConfig() {
     const config = await this.modelConfigRepository?.findOneBy({ id: 1 });
     const key = config?.encryptedKey ? this.decryptKey(config.encryptedKey) : '';
-    return { provider: config?.provider || 'gemini', has_api_key: Boolean(key), masked_api_key: key ? `${'*'.repeat(Math.min(key.length, 16))}${key.slice(-4)}` : '' };
+    const embKey = config?.encryptedEmbeddingKey ? this.decryptKey(config.encryptedEmbeddingKey) : '';
+    return {
+      provider: config?.provider || 'gemini',
+      has_api_key: Boolean(key),
+      masked_api_key: key ? `${'*'.repeat(Math.min(key.length, 16))}${key.slice(-4)}` : '',
+      has_embedding_key: Boolean(embKey),
+      masked_embedding_key: embKey ? `${'*'.repeat(Math.min(embKey.length, 16))}${embKey.slice(-4)}` : '',
+    };
   }
 
-  async updateModelConfig(input: { provider?: string; api_key?: string }) {
+  async updateModelConfig(input: { provider?: string; api_key?: string; embedding_api_key?: string }) {
     const provider = input?.provider;
     if (!['gemini', 'openai', 'anthropic', 'local'].includes(provider || '')) throw new HttpException('Nhà cung cấp không hợp lệ.', HttpStatus.BAD_REQUEST);
     const key = input.api_key?.trim();
-    if (key && (key.length > 512 || /[\r\n\x00-\x1f]/.test(key))) throw new HttpException('Khóa API không hợp lệ.', HttpStatus.BAD_REQUEST);
+    if (key && (key.length > 512 || hasControlCharacters(key))) throw new HttpException('Khóa API không hợp lệ.', HttpStatus.BAD_REQUEST);
+    const embKey = input.embedding_api_key?.trim();
+    if (embKey && (embKey.length > 512 || hasControlCharacters(embKey))) throw new HttpException('Khóa Embedding API không hợp lệ.', HttpStatus.BAD_REQUEST);
+
     if (!this.modelConfigRepository) throw new HttpException('Chưa sẵn sàng lưu cấu hình.', HttpStatus.SERVICE_UNAVAILABLE);
     const current = await this.modelConfigRepository.findOneBy({ id: 1 });
     if (current?.provider !== provider && provider !== 'local' && !key) {
@@ -105,8 +135,59 @@ export class ChatService {
     record.provider = provider!;
     if (key) record.encryptedKey = this.encryptKey(key);
     else if (provider === 'local') record.encryptedKey = null;
+
+    if (embKey) {
+      record.encryptedEmbeddingKey = this.encryptKey(embKey);
+    }
+
     await this.modelConfigRepository.save(record);
+    // Tự động đồng bộ khóa nhúng sang AI Core runtime
+    await this.syncEmbeddingConfigToAiCore(record);
+
     return this.getModelConfig();
+  }
+
+  /** Đồng bộ khóa nhúng tới AI Core runtime mà không cần khởi động lại dịch vụ hay sửa file .env */
+  async syncEmbeddingConfigToAiCore(record?: ModelConfig) {
+    try {
+      const config = record || (await this.modelConfigRepository?.findOneBy({ id: 1 }));
+      const embKey = config?.encryptedEmbeddingKey ? this.decryptKey(config.encryptedEmbeddingKey) : null;
+      if (!embKey) return;
+      const token = this.configService.get<string>('AI_CORE_INTERNAL_TOKEN');
+      if (!token) return;
+      await firstValueFrom(
+        this.httpService.post(
+          this.getAiServiceUrl('/legal/embedding-config'),
+          { embedding_api_key: embKey },
+          { headers: { 'X-Internal-Token': token }, timeout: 10000 },
+        ),
+      );
+      this.logger.log('Đã đồng bộ khóa nhúng sang AI Core runtime thành công.');
+    } catch (err: any) {
+      this.logger.warn(`Không thể đồng bộ khóa nhúng sang AI Core: ${err?.message || err}`);
+    }
+  }
+
+  /** Kiểm tra kết nối vector embedding thông qua AI Core */
+  async testEmbeddingConnection(input: { api_key?: string }) {
+    const saved = await this.modelConfigRepository?.findOneBy({ id: 1 });
+    const key = input.api_key?.trim() || (saved?.encryptedEmbeddingKey ? this.decryptKey(saved.encryptedEmbeddingKey) : '');
+    if (!key) throw new HttpException('Chưa có khóa Embedding API để kiểm tra.', HttpStatus.BAD_REQUEST);
+    const token = this.configService.get<string>('AI_CORE_INTERNAL_TOKEN');
+    if (!token) throw new HttpException('Chưa cấu hình xác thực nội bộ AI Core.', HttpStatus.SERVICE_UNAVAILABLE);
+    const started = Date.now();
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          this.getAiServiceUrl('/legal/embedding-test'),
+          { embedding_api_key: key },
+          { headers: { 'X-Internal-Token': token }, timeout: 15000 },
+        ),
+      );
+      return { ok: response.data?.ok ?? true, latency_ms: Date.now() - started };
+    } catch {
+      return { ok: false, latency_ms: Date.now() - started };
+    }
   }
 
   /** Kiểm tra khóa bằng yêu cầu nhỏ tới API chính thức, không ghi khóa vào URL hay nhật ký. */
@@ -148,10 +229,21 @@ export class ChatService {
     throw new HttpException('Dịch vụ tra cứu hiện chưa sẵn sàng.', status);
   }
 
+  /** Chỉ máy chủ giữ token nội bộ; không trả token về frontend. */
+  private internalHeaders() {
+    const token = this.configService.get<string>('AI_CORE_INTERNAL_TOKEN');
+    if (!token) throw new HttpException('Chưa cấu hình xác thực nội bộ AI Core.', HttpStatus.SERVICE_UNAVAILABLE);
+    return { 'X-Internal-Token': token };
+  }
+
   private async getFromAi(path: string, params?: Record<string, unknown>): Promise<any> {
     try {
+      const needsInternalToken =
+        ['/config', '/documents', '/web-document-chunks'].includes(path) ||
+        path.startsWith('/documents/');
       const response = await firstValueFrom(this.httpService.get(this.getAiServiceUrl(path), {
         params,
+        headers: needsInternalToken ? this.internalHeaders() : undefined,
         timeout: this.aiRequestTimeoutMs,
       }));
       return response.data;
@@ -163,6 +255,7 @@ export class ChatService {
   private async postToAi(path: string, body: unknown): Promise<any> {
     try {
       const response = await firstValueFrom(this.httpService.post(this.getAiServiceUrl(path), body, {
+        headers: this.internalHeaders(),
         timeout: this.aiRequestTimeoutMs,
       }));
       return response.data;
@@ -187,6 +280,20 @@ export class ChatService {
 
   /** Gửi câu hỏi, lưu hội thoại và chuẩn hóa nguồn thành trích dẫn cho giao diện. */
   async sendMessageToAi(message: string, sessionId?: string) {
+    const started = Date.now();
+    try { return await this.performQuestion(message, sessionId, started); }
+    catch (error) {
+      if (error instanceof HistoryPersistenceError) throw error;
+      if (sessionId) {
+        // Chỉ lưu mã lỗi công khai, không lưu lỗi thô chứa dữ liệu kết nối.
+        await this.chatHistoryService.saveExchange(sessionId, message, 'Dịch vụ tra cứu hiện chưa sẵn sàng.',
+          { answer_status: 'error', refusal_reason: null, citation_count: 0, latency_ms: Date.now() - started, error_code: 'upstream_unavailable', config_version: null, model_version: null }).catch(() => undefined);
+      }
+      throw error;
+    }
+  }
+
+  private async performQuestion(message: string, sessionId: string | undefined, started: number) {
     const history = sessionId
       ? (await this.chatHistoryService.getHistory(sessionId, 10)).map(log => ({
           role: log.role,
@@ -249,15 +356,23 @@ export class ChatService {
     const answer = proposed.length > 0 && citations.length === proposed.length && typeof result?.answer === 'string'
       ? result.answer : REFUSAL;
     if (sessionId) {
-      await this.chatHistoryService.saveMessage(sessionId, 'user', message);
-      await this.chatHistoryService.saveMessage(sessionId, 'bot', answer);
+      await this.chatHistoryService.saveExchange(sessionId, message, answer, {
+        answer_status: answer === REFUSAL ? 'refused' : 'cited',
+        refusal_reason: answer === REFUSAL ? (proposed.length ? 'citation_verification_failed' : 'no_evidence') : null,
+        citation_count: answer === REFUSAL ? 0 : citations.length, latency_ms: Date.now() - started,
+        config_version: result.config_version || null, model_version: result.model_version || null, error_code: null,
+      }).catch(() => { throw new HistoryPersistenceError(); });
     }
     return { answer, citations: answer === REFUSAL ? [] : citations, suggested_questions: result?.suggested_questions ?? [] };
   }
 
-  getAllHistory() {
-    return this.chatHistoryService.getAllHistory();
+  getAllHistory(before?: number, limit?: number, from?: string, to?: string) {
+    return this.chatHistoryService.getAllHistory(before, limit, from, to);
   }
+
+  /** Analytics và rà soát luôn dùng dữ liệu server làm nguồn sự thật. */
+  analytics() { return this.chatHistoryService.analytics(); }
+  review(sessionId: string, status: string, userId: number) { return this.chatHistoryService.review(sessionId, status, userId); }
 
   /** Lấy thống kê chỉ từ những văn bản được phép công bố. */
   getPublicSummary() {
@@ -280,35 +395,23 @@ export class ChatService {
     return this.getFromAi('/documents');
   }
 
+  /** Đọc danh sách các đoạn văn bản đã lập chỉ mục của một tài liệu để quản trị viên đối chiếu. */
+  getDocumentChunks(id: string) {
+    return this.getFromAi(`/documents/${encodeURIComponent(id)}/chunks`);
+  }
+
+  /** Xóa có nhật ký phục hồi, không báo thành công khi chỉ một kho đã xử lý. */
   async deleteDocument(name: string) {
-    try {
-      const response = await firstValueFrom(this.httpService.delete(this.getAiServiceUrl('/documents'), {
-        params: { name },
-        timeout: this.aiRequestTimeoutMs,
-      }));
-      return response.data;
-    } catch (error) {
-      this.handleAiError(error);
-    }
+    if (!this.jobs) throw new HttpException('Chưa sẵn sàng phục hồi dữ liệu.', HttpStatus.SERVICE_UNAVAILABLE);
+    return this.jobs.deleteDocument(name);
   }
 
   async ingestFromUrl(url: string) {
     // Giữ route cũ tương thích và đồng bộ danh mục sau khi AI Core lập chỉ mục.
     const result = await this.postInternalToAi('/ingest-url', { url: url.trim() });
-    if (this.legalService && ['indexed', 'duplicate'].includes(result?.status)) {
-      const existing = await this.legalService.findByContentHash(result.content_hash);
-      if (!existing) await this.legalService.createDocument({
-        documentNumber: result.doc_number,
-        documentType: result.document_type as LegalDocumentType,
-        title: result.doc_title,
-        issuingAuthority: result.issuing_authority,
-        issuedDate: result.issued_date,
-        effectiveDate: result.effective_date,
-        effectiveStatus: result.effective_status as EffectiveStatus,
-        sourceUrl: result.source_url,
-        contentHash: result.content_hash,
-        scope: result.scope as AccessScope,
-      });
+    if (this.jobs && ['indexed', 'duplicate'].includes(result?.status)) {
+      const jobId = await this.jobs.begin();
+      return this.jobs.complete(jobId, result);
     }
     return result;
   }

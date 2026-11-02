@@ -6,10 +6,11 @@ describe('ChatService', () => {
   const get = jest.fn();
   const getHistory = jest.fn();
   const saveMessage = jest.fn();
+  const saveExchange = jest.fn().mockResolvedValue(undefined);
   const service = new ChatService(
     { post, get } as any,
     { get: (key: string, fallback: unknown) => key === 'AI_CORE_INTERNAL_TOKEN' ? 'gia-lap-noi-bo' : fallback } as any,
-    { getHistory, saveMessage } as any,
+    { getHistory, saveMessage, saveExchange } as any,
   );
 
   beforeEach(() => {
@@ -26,9 +27,10 @@ describe('ChatService', () => {
     expect(post).toHaveBeenCalledWith(
       'http://localhost:8001/chat',
       { message: 'Quy định gì?', history: [{ role: 'user', message: 'Câu hỏi trước' }] },
-      { timeout: 60000 },
+      { timeout: 90000, headers: { 'X-Internal-Token': 'gia-lap-noi-bo' } },
     );
-    expect(saveMessage).toHaveBeenCalledTimes(2);
+    expect(saveExchange).toHaveBeenCalledTimes(1);
+    expect(saveExchange).toHaveBeenCalledWith('session-1', 'Quy định gì?', expect.any(String), expect.objectContaining({ answer_status: 'refused', citation_count: 0 }));
     // Phản hồi thiếu căn cứ từ mô hình phải chuyển thành lời từ chối an toàn.
     expect(result.answer).toContain('Chưa tìm thấy căn cứ pháp lý');
     expect(result.citations).toEqual([]);
@@ -49,7 +51,7 @@ describe('ChatService', () => {
       articleNumber: '1', effectiveStatus: 'active', verified: true,
     });
     expect(post).toHaveBeenCalledWith('http://localhost:8001/legal/citations/verify',
-      { chunk_ids: ['doc-1:0'] }, { timeout: 60000, headers: { 'X-Internal-Token': 'gia-lap-noi-bo' } });
+      { chunk_ids: ['doc-1:0'] }, { timeout: 90000, headers: { 'X-Internal-Token': 'gia-lap-noi-bo' } });
   });
 
   it('từ chối khi mô hình bịa Điều hoặc Khoản', async () => {
@@ -82,19 +84,28 @@ describe('ChatService', () => {
   it('chỉ lấy thống kê qua endpoint công khai của AI Core', async () => {
     get.mockReturnValue(of({ data: { document_count: 1, article_count: 2 } }));
     await expect(service.getPublicSummary()).resolves.toMatchObject({ document_count: 1 });
-    expect(get).toHaveBeenCalledWith('http://localhost:8001/legal/public-summary', { params: undefined, timeout: 60000 });
+    expect(get).toHaveBeenCalledWith('http://localhost:8001/legal/public-summary', { params: undefined, headers: undefined, timeout: 90000 });
   });
 
   it('chỉ chuyển URL nạp kèm token nội bộ do máy chủ cấu hình', async () => {
     const protectedService = new ChatService(
       { post, get } as any,
       { get: (key: string, fallback: unknown) => key === 'AI_CORE_INTERNAL_TOKEN' ? 'gia-lap-noi-bo' : fallback } as any,
-      { getHistory, saveMessage } as any,
+      { getHistory, saveMessage, saveExchange } as any,
     );
     post.mockReturnValue(of({ data: { status: 'accepted' } }));
     await expect(protectedService.ingestFromUrl('https://example.org/law')).resolves.toEqual({ status: 'accepted' });
     expect(post).toHaveBeenCalledWith('http://localhost:8001/ingest-url',
       { url: 'https://example.org/law' },
-      { timeout: 60000, headers: { 'X-Internal-Token': 'gia-lap-noi-bo' } });
+      { timeout: 90000, headers: { 'X-Internal-Token': 'gia-lap-noi-bo' } });
+  });
+
+  it('lấy danh sách phân đoạn của tài liệu kèm token nội bộ AI Core', async () => {
+    get.mockReturnValue(of({ data: { docId: 'doc-168', total: 1, chunks: [{ chunkId: 'doc-168:0', index: 1, content: 'Điều 1' }] } }));
+    await expect(service.getDocumentChunks('doc-168')).resolves.toMatchObject({ docId: 'doc-168', total: 1 });
+    expect(get).toHaveBeenCalledWith(
+      'http://localhost:8001/documents/doc-168/chunks',
+      { params: undefined, headers: { 'X-Internal-Token': 'gia-lap-noi-bo' }, timeout: 90000 },
+    );
   });
 });

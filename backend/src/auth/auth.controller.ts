@@ -1,8 +1,11 @@
 import { Controller, Post, Body, UnauthorizedException, ForbiddenException, HttpCode, HttpStatus, Request, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { AuthRateGuard } from './auth-rate.guard';
+import { authInput } from './auth-input';
 
 @Controller('auth')
+@UseGuards(AuthRateGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -19,7 +22,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: any) {
-    const { username, password } = body;
+    const { username } = authInput(body, { username: 'identifier' });
+    // Mật khẩu cũ ngắn vẫn được phép đăng nhập; chính sách 8 ký tự áp dụng khi tạo/đổi.
+    const password = body.password;
+    if (typeof password !== 'string' || !password || password.length > 128) throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ.');
     
     // 1. Xác thực tài khoản
     const user = await this.authService.validateUser(username, password);
@@ -29,8 +35,8 @@ export class AuthController {
 
     // 1b. Nếu đã kích hoạt 2FA, yêu cầu mã OTP
     if (user.twoFaEnabled) {
-      await this.authService.sendLogin2FaOtp(user.id);
-      return { require2fa: true, username: user.username };
+      const challenge = await this.authService.sendLogin2FaOtp(user.id);
+      return { require2fa: true, username: user.username, ...challenge };
     }
 
     // 2. Sinh và trả về JWT Token
@@ -41,8 +47,8 @@ export class AuthController {
   @Post('verify-2fa')
   @HttpCode(HttpStatus.OK)
   async verify2Fa(@Body() body: any) {
-    const { username, otpCode } = body;
-    return await this.authService.verify2FaLogin(username, otpCode);
+    const { username, otpCode, challengeId } = authInput(body, { username: 'identifier', otpCode: 'otp', challengeId: 'challenge' });
+    return await this.authService.verify2FaLogin(username, otpCode, challengeId);
   }
 
   @Post('register')
@@ -56,7 +62,8 @@ export class AuthController {
   // 1. Gửi OTP khôi phục mật khẩu qua Email
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  async forgotPassword(@Body('email') email: string) {
+  async forgotPassword(@Body() body: unknown) {
+    const { email } = authInput(body, { email: 'email' });
     return await this.authService.sendResetPasswordOtp(email);
   }
 
@@ -64,21 +71,20 @@ export class AuthController {
   @Post('verify-reset-otp')
   @HttpCode(HttpStatus.OK)
   async verifyResetOtp(
-    @Body('email') email: string,
-    @Body('otpCode') otpCode: string,
+    @Body() body: unknown,
   ) {
-    return await this.authService.verifyResetPasswordOtp(email, otpCode);
+    const { email, otpCode, challengeId } = authInput(body, { email: 'email', otpCode: 'otp', challengeId: 'challenge' });
+    return await this.authService.verifyResetPasswordOtp(email, otpCode, challengeId);
   }
 
   // 3. Đặt lại mật khẩu mới sau khi xác thực OTP thành công
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(
-    @Body('email') email: string,
-    @Body('otpCode') otpCode: string,
-    @Body('password') pass: string,
+    @Body() body: unknown,
   ) {
-    return await this.authService.resetPassword(email, otpCode, pass);
+    const { email, otpCode, password, challengeId } = authInput(body, { email: 'email', otpCode: 'otp', password: 'password', challengeId: 'challenge' });
+    return await this.authService.resetPassword(email, otpCode, password, challengeId);
   }
 }
 

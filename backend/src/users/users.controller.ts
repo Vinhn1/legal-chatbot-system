@@ -3,6 +3,8 @@ import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
+import { AuthRateGuard } from '../auth/auth-rate.guard';
+import { authInput } from '../auth/auth-input';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -44,6 +46,7 @@ export class UsersController {
 
   // 4. Gửi OTP xác thực bật/tắt 2FA
   @Post('2fa/request')
+  @UseGuards(AuthRateGuard)
   @HttpCode(HttpStatus.OK)
   async request2FaOtp(@Request() req: any) {
     return await this.usersService.request2FaOtp(req.user.userId);
@@ -51,16 +54,19 @@ export class UsersController {
 
   // 5. Xác nhận bật/tắt 2FA
   @Post('2fa/toggle')
+  @UseGuards(AuthRateGuard)
   @HttpCode(HttpStatus.OK)
   async toggle2Fa(
     @Request() req: any,
-    @Body('otpCode') otpCode: string,
+    @Body() body: unknown,
   ) {
-    return await this.usersService.toggle2Fa(req.user.userId, otpCode);
+    const { otpCode, challengeId } = authInput(body, { otpCode: 'otp', challengeId: 'challenge' });
+    return await this.usersService.toggle2Fa(req.user.userId, otpCode, challengeId);
   }
 
   // 6. Gửi OTP đổi số điện thoại
   @Post('phone/request')
+  @UseGuards(AuthRateGuard)
   @HttpCode(HttpStatus.OK)
   async requestPhoneChangeOtp(
     @Request() req: any,
@@ -71,13 +77,14 @@ export class UsersController {
 
   // 7. Xác nhận đổi số điện thoại bằng OTP
   @Post('phone/verify')
+  @UseGuards(AuthRateGuard)
   @HttpCode(HttpStatus.OK)
   async verifyPhoneChange(
     @Request() req: any,
     @Body() body: any,
   ) {
-    const { phone, otpCode } = body;
-    return await this.usersService.verifyPhoneChange(req.user.userId, phone, otpCode);
+    const { otpCode, challengeId } = authInput(body, { otpCode: 'otp', challengeId: 'challenge' });
+    return await this.usersService.verifyPhoneChange(req.user.userId, body.phone, otpCode, challengeId);
   }
 
   // 8. Lấy danh sách tất cả các tài khoản quản trị/nhân viên (chỉ dành cho Admin)

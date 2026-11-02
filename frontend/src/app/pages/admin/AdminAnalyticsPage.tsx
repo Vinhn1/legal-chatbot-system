@@ -12,41 +12,40 @@ import { API_BASE } from "../../../config";
  */
 export function AdminAnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [unknownCount, setUnknownCount] = useState(0);
   const [stats, setStats] = useState({
     totalQuestions: 0,
     withCitations: 0,
-    citationRate: 100,
+    citationRate: null as number | null,
     refusalCount: 0,
     refusalRate: 0,
     totalDocuments: 0,
     unverifiedDocs: 0,
-    verifiedDocsRate: 100,
+    verifiedDocsRate: null as number | null,
   });
 
   const fetchAnalytics = async () => {
     setIsLoading(true);
     try {
-      const [historyRes, docsRes] = await Promise.allSettled([
-        axios.get(`${API_BASE}/chat/history`),
-        axios.get(`${API_BASE}/chat/documents`),
+      // Một API lỗi phải hiện rõ phần thiếu dữ liệu, không đổi thành tỷ lệ 100%.
+      setError("");
+      const [analyticsRes, docsRes] = await Promise.allSettled([
+        axios.get(`${API_BASE}/chat/analytics`), axios.get(`${API_BASE}/chat/documents`),
       ]);
-
-      const history = historyRes.status === "fulfilled" && Array.isArray(historyRes.value.data) ? historyRes.value.data : [];
+      const metrics = analyticsRes.status === "fulfilled" ? analyticsRes.value.data : null;
       const documents = docsRes.status === "fulfilled" && Array.isArray(docsRes.value.data) ? docsRes.value.data : [];
-
-      const userQuestions = history.filter((h: any) => h.role === "user");
-      const botAnswers = history.filter((h: any) => h.role === "bot");
-
-      const refusals = botAnswers.filter((h: any) => h.message?.includes("Chưa tìm thấy căn cứ pháp lý")).length;
-      const withCitations = botAnswers.length - refusals;
-      const citationRate = botAnswers.length > 0 ? Math.round((withCitations / botAnswers.length) * 100) : 100;
-      const refusalRate = botAnswers.length > 0 ? Math.round((refusals / botAnswers.length) * 100) : 0;
-
-      const unverifiedDocs = documents.filter((d: any) => !d.effectiveDate || d.effectiveStatus === "unknown").length;
-      const verifiedDocsRate = documents.length > 0 ? Math.round(((documents.length - unverifiedDocs) / documents.length) * 100) : 100;
+      if (!metrics || docsRes.status === "rejected") setError("Thiếu dữ liệu thống kê hoặc danh mục tài liệu. Vui lòng thử lại.");
+      setUnknownCount(metrics?.unknown || 0);
+      const refusals = metrics?.refused || 0;
+      const withCitations = metrics?.cited || 0;
+      const citationRate = metrics?.citation_rate ?? null;
+      const refusalRate = metrics?.refusal_rate ?? 0;
+      const unverifiedDocs = documents.filter((d: { effectiveDate?: string; effectiveStatus?: string }) => !d.effectiveDate || d.effectiveStatus === "unknown").length;
+      const verifiedDocsRate = documents.length > 0 ? Math.round(((documents.length - unverifiedDocs) / documents.length) * 100) : null;
 
       setStats({
-        totalQuestions: userQuestions.length,
+        totalQuestions: metrics?.measured || 0,
         withCitations,
         citationRate,
         refusalCount: refusals,
@@ -56,14 +55,15 @@ export function AdminAnalyticsPage() {
         verifiedDocsRate,
       });
     } catch {
-      // Giữ nguyên giá trị mặc định nếu API chưa phản hồi
+      setError("Không thể tải thống kê. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAnalytics();
+    const timer = window.setTimeout(() => { void fetchAnalytics(); }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   return (
@@ -93,7 +93,9 @@ export function AdminAnalyticsPage() {
         </button>
       </div>
 
-      {/* 3 Thẻ Chỉ số Chất lượng */}
+      {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
+      {unknownCount > 0 && <p className="text-sm text-[#56677c]">{unknownCount} phản hồi cũ thiếu trạng thái, chưa đưa vào mẫu đo.</p>}
+      {/* Các chỉ số có cấu trúc không đại diện độ đúng của lập luận pháp lý. */}
       <div className="grid gap-6 sm:grid-cols-3">
         <div className="rounded-2xl border border-[#d3dbe4] bg-white p-6 shadow-xs">
           <div className="text-xs font-bold uppercase tracking-wider text-[#6a7b8e]">
@@ -101,14 +103,14 @@ export function AdminAnalyticsPage() {
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-4xl font-bold text-[#1d4f88]">
-              {isLoading ? <Loader2 size={24} className="animate-spin text-[#1d4f88]" /> : `${stats.citationRate}%`}
+              {isLoading ? <Loader2 size={24} className="animate-spin text-[#1d4f88]" /> : stats.citationRate === null ? "N/A" : `${stats.citationRate === null ? "N/A" : `${stats.citationRate}%`}`}
             </span>
             <span className="text-xs font-semibold text-emerald-700">
               {stats.withCitations} / {stats.totalQuestions} lượt hỏi
             </span>
           </div>
           <p className="mt-2 text-xs text-[#718294]">
-            Tỷ lệ câu trả lời gắn đúng văn bản và số Điều quy định
+            Tỷ lệ phản hồi có citation đã kiểm chứng; không đo độ đúng pháp lý.
           </p>
         </div>
 
@@ -155,13 +157,13 @@ export function AdminAnalyticsPage() {
         <div className="mt-6 space-y-5">
           <div>
             <div className="flex justify-between text-xs sm:text-sm font-bold text-[#142747] mb-1.5">
-              <span>Độ chính xác đối chiếu trích dẫn thành công</span>
+              <span>Tỷ lệ phản hồi có trích dẫn đã xác minh</span>
               <span>{stats.citationRate}%</span>
             </div>
             <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
               <div
                 className="h-full bg-[#1d4f88] rounded-full transition-all duration-500"
-                style={{ width: `${stats.citationRate}%` }}
+                style={{ width: `${stats.citationRate ?? 0}%` }}
               />
             </div>
           </div>
@@ -169,19 +171,19 @@ export function AdminAnalyticsPage() {
           <div>
             <div className="flex justify-between text-xs sm:text-sm font-bold text-[#142747] mb-1.5">
               <span>Tỷ lệ văn bản đầy đủ thông tin hiệu lực pháp lý</span>
-              <span>{stats.verifiedDocsRate}%</span>
+              <span>{stats.verifiedDocsRate === null ? "N/A" : `${stats.verifiedDocsRate}%`}</span>
             </div>
             <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
               <div
                 className="h-full bg-[#2f7560] rounded-full transition-all duration-500"
-                style={{ width: `${stats.verifiedDocsRate}%` }}
+                style={{ width: `${stats.verifiedDocsRate ?? 0}%` }}
               />
             </div>
           </div>
 
           <div>
             <div className="flex justify-between text-xs sm:text-sm font-bold text-[#142747] mb-1.5">
-              <span>Kho dữ liệu chưa chứa văn bản được hỏi (Cần nạp bổ sung)</span>
+              <span>Kho dữ liệu chưa chứa văn bản được hỏi — Cần nạp bổ sung</span>
               <span>{stats.refusalRate}%</span>
             </div>
             <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">

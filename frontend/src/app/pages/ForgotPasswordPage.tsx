@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
 import { Lock, Eye, EyeOff, ArrowRight, CheckCircle2, ChevronLeft, Shield, Mail } from "lucide-react";
 import { LegalLogo } from "../components/LegalLogo";
+import { useTheme } from "../context/useTheme";
 import axios from "axios";
 import { API_BASE } from "../../config";
 
@@ -126,6 +127,8 @@ function OTPBoxes({ value, onChange }: { value: string; onChange: (v: string) =>
 export function ForgotPasswordPage() {
   const [step, setStep] = useState<Step>(1);
   const [email, setEmail] = useState("");
+  // Giữ challenge do server phát hành cho đúng lượt khôi phục.
+  const [challengeId, setChallengeId] = useState("");
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -133,6 +136,14 @@ export function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [timer, setTimer] = useState(0);
   const navigate = useNavigate();
+  const { setDarkScopeActive } = useTheme();
+
+  // Đảm bảo trang quên mật khẩu luôn duy trì giao diện sáng tiêu chuẩn
+  useEffect(() => {
+    setDarkScopeActive(false);
+    document.documentElement.classList.remove("dark");
+    document.documentElement.style.colorScheme = "light";
+  }, [setDarkScopeActive]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -149,7 +160,7 @@ export function ForgotPasswordPage() {
   const pwStrength =
     password.length === 0
       ? 0
-      : password.length < 6
+      : password.length < 8
       ? 1
       : password.length < 10
       ? 2
@@ -168,7 +179,9 @@ export function ForgotPasswordPage() {
     setIsLoading(true);
     setError("");
     try {
-      await axios.post(`${API_BASE}/auth/forgot-password`, { email });
+      const response = await axios.post(`${API_BASE}/auth/forgot-password`, { email });
+      setChallengeId(response.data.challengeId);
+      setOtp("");
       setStep(2);
       setTimer(60);
     } catch {
@@ -186,7 +199,7 @@ export function ForgotPasswordPage() {
     setIsLoading(true);
     setError("");
     try {
-      await axios.post(`${API_BASE}/auth/verify-otp`, { email, otp });
+      await axios.post(`${API_BASE}/auth/verify-reset-otp`, { email, otpCode: otp, challengeId });
       setStep(3);
     } catch {
       setError("Mã OTP không chính xác hoặc đã hết hạn.");
@@ -196,8 +209,8 @@ export function ForgotPasswordPage() {
   };
 
   const handleResetPassword = async () => {
-    if (password.length < 6) {
-      setError("Mật khẩu mới phải có ít nhất 6 ký tự.");
+    if (password.length < 8) {
+      setError("Mật khẩu mới phải có ít nhất 8 ký tự.");
       return;
     }
     if (password !== confirmPw) {
@@ -207,7 +220,7 @@ export function ForgotPasswordPage() {
     setIsLoading(true);
     setError("");
     try {
-      await axios.post(`${API_BASE}/auth/reset-password`, { email, otp, newPassword: password });
+      await axios.post(`${API_BASE}/auth/reset-password`, { email, otpCode: otp, password, challengeId });
       setStep(4);
     } catch {
       setError("Yêu cầu khôi phục mật khẩu không hợp lệ hoặc đã hết hạn.");
@@ -272,7 +285,7 @@ export function ForgotPasswordPage() {
             <div className="flex flex-col gap-4">
               <div className="text-center">
                 <p className="text-[#516278] text-xs sm:text-sm font-semibold mb-3">
-                  Mã OTP khôi phục mật khẩu đã được gửi đến email <span className="text-[#142747] font-bold">{email}</span>.
+                  Nếu tài khoản tồn tại, mã OTP sẽ được gửi đến email <span className="text-[#142747] font-bold">{email}</span>.
                 </p>
               </div>
 
@@ -330,7 +343,7 @@ export function ForgotPasswordPage() {
               </p>
               <BrandInput
                 icon={Lock}
-                placeholder="Mật khẩu mới (ít nhất 6 ký tự)"
+                placeholder="Mật khẩu mới tối thiểu 8 ký tự"
                 type="password"
                 value={password}
                 onChange={setPassword}
@@ -369,7 +382,7 @@ export function ForgotPasswordPage() {
               )}
 
               <button
-                disabled={password.length < 6 || password !== confirmPw || isLoading}
+                disabled={password.length < 8 || password !== confirmPw || isLoading}
                 onClick={handleResetPassword}
                 className="w-full h-13 rounded-xl bg-[#1d4f88] hover:bg-[#153b66] text-white font-bold text-sm shadow-sm transition-[background-color,transform] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
               >

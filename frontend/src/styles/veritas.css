@@ -1,4 +1,8 @@
 /* Đồng bộ bảng màu Veritas Navy & Warm Paper cho hệ thống Legal Chatbot Veritas */
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   --primary: #1d4f88;
   --primary-foreground: #ffffff;
@@ -97,6 +101,288 @@
   animation: veritasPulseSubtle 2.4s ease-in-out infinite;
 }
 
+/* Hiệu ứng 3 dấu chấm chuyển động nhấp nhô lên xuống khi chatbot đang phản hồi */
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+.typing-dot-1 {
+  animation: typingBounce 1.3s infinite ease-in-out;
+}
+
+.typing-dot-2 {
+  animation: typingBounce 1.3s infinite ease-in-out;
+  animation-delay: 0.2s;
+}
+
+.typing-dot-3 {
+  animation: typingBounce 1.3s infinite ease-in-out;
+  animation-delay: 0.4s;
+}
+
+/* Hiệu ứng xuất hiện khi cuộn trang (Scroll-Driven Reveal) */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger delays cho các phần tử con xuất hiện tuần tự */
+.stagger-1 {
+  transition-delay: 90ms;
+}
+
+.stagger-2 {
+  transition-delay: 180ms;
+}
+
+.stagger-3 {
+  transition-delay: 270ms;
+}
+
+.stagger-4 {
+  transition-delay: 360ms;
+}
+
+/* Hiệu ứng hào quang Robot Mascot (Robot Glow Pulse) */
+@keyframes robotAuraPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(29, 79, 136, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(29, 79, 136, 0.08);
+  }
+}
+
+.robot-aura {
+  animation: robotAuraPulse 3s infinite ease-in-out;
+}
+
+/* Hoạt ảnh Avatar Chatbot Tra cứu Pháp luật (4 trạng thái: idle, searching, talking, happy) */
+.veritas-robot-avatar * {
+  transform-box: fill-box;
+}
+
+.veritas-robot-avatar .float {
+  animation: veritasRobotFloat 4.2s ease-in-out infinite;
+}
+
+.veritas-robot-avatar .float2 {
+  animation: veritasRobotFloat 4.2s ease-in-out -1.1s infinite;
+}
+
+.veritas-robot-avatar .shadow {
+  transform-origin: center;
+  animation: veritasRobotShadow 4.2s ease-in-out infinite;
+}
+
+.veritas-robot-avatar .glow {
+  transform-origin: 100px 82px;
+  transform-box: view-box;
+  animation: veritasRobotGlow 3.4s ease-in-out infinite;
+}
+
+.veritas-robot-avatar .eye {
+  transform-origin: center;
+  animation: veritasRobotBlink 5.5s infinite;
+}
+
+.veritas-robot-avatar .eyes {
+  animation: veritasRobotGaze 8s ease-in-out infinite;
+}
+
+.veritas-robot-avatar .eyes-happy,
+.veritas-robot-avatar .mouth-talk,
+.veritas-robot-avatar .scan,
+.veritas-robot-avatar .check {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.veritas-robot-avatar .mouth-smile {
+  transition: opacity 0.2s;
+}
+
+.veritas-robot-avatar .check {
+  transform-origin: center;
+}
+
+.veritas-robot-avatar[data-state="searching"] .eyes {
+  animation: veritasRobotLook 1.3s ease-in-out infinite;
+}
+
+.veritas-robot-avatar[data-state="searching"] .scan {
+  opacity: 0.95;
+  animation: veritasRobotScan 1.2s ease-in-out infinite alternate;
+}
+
+.veritas-robot-avatar[data-state="talking"] .mouth-smile {
+  opacity: 0;
+}
+
+.veritas-robot-avatar[data-state="talking"] .mouth-talk {
+  opacity: 1;
+  transform-origin: center;
+  animation: veritasRobotTalk 0.32s ease-in-out infinite alternate;
+}
+
+.veritas-robot-avatar[data-state="happy"] .eyes {
+  opacity: 0;
+}
+
+.veritas-robot-avatar[data-state="happy"] .eyes-happy {
+  opacity: 1;
+}
+
+.veritas-robot-avatar[data-state="happy"] .float {
+  animation: veritasRobotHop 0.7s ease-in-out infinite;
+}
+
+.veritas-robot-avatar[data-state="happy"] .float2 {
+  animation: veritasRobotHop 0.7s ease-in-out -0.15s infinite;
+}
+
+.veritas-robot-avatar[data-state="happy"] .shadow {
+  animation: veritasRobotShadowHop 0.7s ease-in-out infinite;
+}
+
+.veritas-robot-avatar[data-state="happy"] .glow {
+  animation-duration: 1s;
+}
+
+.veritas-robot-avatar[data-state="happy"] .check {
+  opacity: 1;
+  animation: veritasRobotPop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+@keyframes veritasRobotFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes veritasRobotHop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-14px); }
+}
+
+@keyframes veritasRobotShadow {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(0.8); opacity: 0.55; }
+}
+
+@keyframes veritasRobotShadowHop {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  40% { transform: scale(0.65); opacity: 0.4; }
+}
+
+@keyframes veritasRobotGlow {
+  0%, 100% { transform: scale(0.94); opacity: 0.7; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+@keyframes veritasRobotBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.08); }
+}
+
+@keyframes veritasRobotGaze {
+  0%, 30%, 100% { transform: translateX(0); }
+  38%, 46% { transform: translateX(-4px); }
+  56%, 64% { transform: translateX(4px); }
+  74% { transform: translateX(0); }
+}
+
+@keyframes veritasRobotLook {
+  0%, 100% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+}
+
+@keyframes veritasRobotScan {
+  from { transform: translateX(0); }
+  to { transform: translateX(74px); }
+}
+
+@keyframes veritasRobotTalk {
+  from { transform: scaleY(0.25); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes veritasRobotPop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+/* Hiệu ứng chấm trạng thái nhịp thở (Pulsing Status Dot) */
+@keyframes statusDotPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.55;
+  }
+}
+
+.status-dot-pulse {
+  animation: statusDotPulse 2s infinite ease-in-out;
+}
+
+/* FAQ Accordion chuyển động mượt mà bằng CSS Grid */
+.faq-grid-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.faq-grid-wrapper.is-open {
+  grid-template-rows: 1fr;
+}
+
+.faq-grid-inner {
+  overflow: hidden;
+}
+
+/* Hiệu ứng chuyển cảnh êm dịu khi chuyển đổi câu hỏi mẫu đối chiếu */
+@keyframes caseContentFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-case-swap {
+  animation: caseContentFade 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Thẻ card nhấc nhẹ và đổ bóng đa tầng khi hover */
+.hover-card-elevate {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.hover-card-elevate:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px -12px rgba(20, 39, 71, 0.12);
+  border-color: #b8c7d9;
+}
+
 /* Tôn trọng người dùng bật chế độ giảm chuyển động theo tiêu chuẩn WCAG */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -105,5 +391,42 @@
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+  .scroll-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .faq-grid-wrapper {
+    transition: none !important;
+  }
+  .animate-case-swap,
+  .robot-aura,
+  .status-dot-pulse {
+    animation: none !important;
+  }
 }
+
+/* Nút thao tác trên Header xanh Navy của Chatbot (bảo vệ tuyệt đối khỏi bị phủ nền trắng) */
+.legal-chat-header-btn,
+button.legal-chat-header-btn,
+a.legal-chat-header-btn {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+}
+
+.legal-chat-header-btn:hover,
+button.legal-chat-header-btn:hover,
+a.legal-chat-header-btn:hover {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.legal-chat-header-btn:active,
+button.legal-chat-header-btn:active,
+a.legal-chat-header-btn:active {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  transform: scale(0.95);
+}
+
 

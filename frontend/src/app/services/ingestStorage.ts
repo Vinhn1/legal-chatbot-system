@@ -6,6 +6,21 @@ const DB_VERSION = 1;
 
 /** Bộ nhớ RAM lưu trữ danh sách tệp xuyên suốt các lượt chuyển tab và chuyển trang điều hướng */
 let inMemoryFiles: FileItem[] = [];
+const storageListeners = new Set<(files: FileItem[]) => void>();
+
+/** Đăng ký lắng nghe thay đổi danh sách tệp từ các tiến trình chạy ngầm */
+export function subscribeInMemoryFiles(listener: (files: FileItem[]) => void): () => void {
+  storageListeners.add(listener);
+  return () => {
+    storageListeners.delete(listener);
+  };
+}
+
+function emitStorageChange(): void {
+  for (const listener of storageListeners) {
+    listener(inMemoryFiles);
+  }
+}
 
 /** Mở kết nối IndexedDB phục vụ lưu trữ bền vững các tệp cần rà soát */
 function openDb(): Promise<IDBDatabase> {
@@ -31,9 +46,10 @@ export function getInMemoryFiles(): FileItem[] {
   return inMemoryFiles;
 }
 
-/** Cập nhật danh sách tệp trong bộ nhớ RAM */
+/** Cập nhật danh sách tệp trong bộ nhớ RAM và phát tín hiệu đồng bộ giao diện */
 export function setInMemoryFiles(files: FileItem[]): void {
   inMemoryFiles = files;
+  emitStorageChange();
 }
 
 /** Lưu một tệp cần rà soát vào IndexedDB */

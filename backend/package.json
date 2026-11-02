@@ -17,7 +17,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "migrate": "node scripts/migrate.cjs",
+    "lint:check": "eslint \"src/**/*.ts\"",
+    "lint:ci": "eslint --config eslint.ci.mjs src/auth/**/*.ts src/users/users.service.ts src/users/users.controller.ts src/app.controller.ts src/chat/chat.service.ts src/chat/chat.controller.ts src/chat/public-session.ts src/chat-history/*.ts src/legal/ingestion-jobs.service.ts src/legal/legal.controller.ts src/common/validation/text.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",

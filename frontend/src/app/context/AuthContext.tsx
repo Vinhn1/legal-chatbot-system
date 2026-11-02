@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react";
 import axios from "axios";
 import { API_BASE } from "../../config";
 
@@ -14,7 +14,7 @@ export type AuthUser = {
   dob: string;
   twoFaEnabled?: boolean;
 };
-type LoginResult = AuthRole | "require_2fa" | "error";
+type LoginResult = AuthRole | "require_2fa" | "invalid_credentials" | "rate_limited" | "server_error" | "error";
 type AuthContextType = {
   user: AuthUser | null;
   token: string | null;
@@ -71,6 +71,8 @@ function isTokenExpired(tokenStr: string | null): boolean {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Challenge chỉ tồn tại trong bộ nhớ của bước đăng nhập hiện tại.
+  const loginChallenge = useRef<string | null>(null);
   // Khởi tạo state: kiểm tra ngay xem token đã lưu có còn hạn hay không
   const [token, setToken] = useState<string | null>(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
@@ -108,14 +110,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout() {
     const currentToken = localStorage.getItem(TOKEN_KEY);
-    if (currentToken && !isTokenExpired(currentToken)) {
-      // Yêu cầu máy chủ thu hồi phiên; keepalive cho phép hoàn tất khi chuyển trang.
-      void fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${currentToken}` }, keepalive: true }).catch(() => {});
-    }
+    // Login đợi thu hồi phiên cũ để tránh vô hiệu hóa JWT vừa được cấp do request chạy lệch thứ tự.
+    const revoke = currentToken && !isTokenExpired(currentToken)
+      ? fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${currentToken}` }, keepalive: true, signal: AbortSignal.timeout(5000) }).catch(() => undefined)
+      : Promise.resolve();
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setToken(null);
     setUser(null);
+    return revoke.then(() => undefined);
   }
 
   // 1. Theo dõi chủ động hạn sử dụng của JWT Token
@@ -226,19 +229,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function login(identifier: string, password: string): Promise<LoginResult> {
-    logout();
+    await logout();
+    loginChallenge.current = null;
     try {
       const response = await axios.post(`${API_BASE}/auth/login`, {
         username: identifier.trim(), password,
       });
-      if (response.data?.require2fa) return "require_2fa";
+      if (response.data?.require2fa) { loginChallenge.current = response.data.challengeId; return "require_2fa"; }
       return acceptLogin(response.data);
-    } catch { return "error"; }
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 401) return "invalid_credentials";
+        if (err.response?.status === 429) return "rate_limited";
+        if (err.response && err.response.status >= 500) return "server_error";
+      }
+      return "error";
+    }
   }
 
   async function verify2faLogin(username: string, otpCode: string): Promise<AuthRole | "error"> {
     try {
-      const response = await axios.post(`${API_BASE}/auth/verify-2fa`, { username, otpCode });
+      const response = await axios.post(`${API_BASE}/auth/verify-2fa`, { username, otpCode, challengeId: loginChallenge.current });
       return acceptLogin(response.data);
     } catch { return "error"; }
   }

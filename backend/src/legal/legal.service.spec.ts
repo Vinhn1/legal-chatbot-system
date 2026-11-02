@@ -76,6 +76,18 @@ describe('Legal schema and service', () => {
       .rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('chấp nhận Phần và tiểu mục làm đơn vị cha nhưng từ chối Điểm trực thuộc Phần', async () => {
+    units.findOneBy.mockResolvedValueOnce({ id: 'part-1', documentId: document.id, unitType: LegalUnitType.PART });
+    await service.createUnit({ documentId: document.id, parentId: 'part-1',
+      unitType: LegalUnitType.SUBSECTION, number: 'I', sortOrder: 1 });
+    expect(units.save).toHaveBeenCalledWith(expect.objectContaining({
+      parentId: 'part-1', unitType: LegalUnitType.SUBSECTION,
+    }));
+    units.findOneBy.mockResolvedValueOnce({ id: 'part-1', documentId: document.id, unitType: LegalUnitType.PART });
+    await expect(service.createUnit({ documentId: document.id, parentId: 'part-1',
+      unitType: LegalUnitType.POINT, number: 'a', sortOrder: 2 })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('evaluates effect on the requested date and never upgrades unknown', () => {
     expect(service.getEffectiveStatusAt(document, '2026-02-28')).toBe(EffectiveStatus.UNKNOWN);
     expect(service.getEffectiveStatusAt(document, '2026-03-01')).toBe(EffectiveStatus.ACTIVE);

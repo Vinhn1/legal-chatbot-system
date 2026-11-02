@@ -13,9 +13,11 @@ import os
 import re
 import unicodedata
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 
 from legal.ingest import extract_text
+from legal.parser import clean_legal_line
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +55,7 @@ KNOWN_ISSUING_AUTHORITIES = [
 
 # Regex nhận diện Số ký hiệu văn bản quy phạm pháp luật (hỗ trợ ký tự Đ/đ như NĐ-CP, ĐBQH)
 REGEX_DOC_NUMBER = re.compile(
-    r"(?:Số|Số ký hiệu|Số:)\s*[:.]?\s*([0-9]+(?:/[0-9]+)?/[A-ZĐ0-9_-]+|[0-9]+/[A-ZĐ0-9_-]+)",
+    r"^Số(?:\s+ký\s+hiệu)?\s*[:.]\s*([0-9]+(?:/[0-9]+)?/[A-ZĐ0-9_-]+)\s*$",
     re.IGNORECASE,
 )
 
@@ -68,6 +70,25 @@ REGEX_EFFECTIVE_DATE = re.compile(
     r"có hiệu lực(?:\s+thi hành)?(?:\s+kể)?\s+từ\s+ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})",
     re.IGNORECASE,
 )
+
+
+def readable_document_number(text: str, filename: str, title: str = "") -> str:
+    """Tạo mã dễ đọc cho tài liệu không có số hiệu quy phạm chính thức."""
+    opening = "\n".join(text.splitlines()[:30])
+    topic_pattern = r"(?im)^\s*(CHUYÊN ĐỀ|SỔ TAY|GIÁO TRÌNH)\s*(\d+|[IVXLCDM]+)?\b"
+    heading = (re.search(topic_pattern, opening) or re.search(topic_pattern, title)
+               or re.search(topic_pattern, Path(filename).stem.replace("_", " ")))
+    kind = {"CHUYÊN ĐỀ": "CD", "SỔ TAY": "ST", "GIÁO TRÌNH": "GT"}.get(
+        heading.group(1).upper() if heading else "", "TL")
+    if heading and heading.group(2):
+        number = heading.group(2)
+        return f"{kind}-{int(number):02d}" if number.isdigit() else f"{kind}-{number.upper()}"
+    label = Path(filename).stem
+    if label.lower() in {"web_document", "pasted_text", "document", "upload"}:
+        label = title or "TAI-LIEU"
+    ascii_label = unicodedata.normalize("NFKD", label.replace("Đ", "D").replace("đ", "d"))
+    slug = re.sub(r"[^A-Z0-9]+", "-", ascii_label.encode("ascii", "ignore").decode().upper()).strip("-")
+    return f"{kind}-{slug[:48].strip('-') or 'TAI-LIEU'}"
 
 
 def _has_vietnamese_marks(value: str) -> bool:
@@ -88,12 +109,56 @@ def _format_date(day_str: str, month_str: str, year_str: str) -> str | None:
         return None
 
 
+def _infer_document_type_from_hint(filename: str, doc_number: str = "") -> str:
+    """Suy luận loại văn bản từ số ký hiệu hoặc tên tệp khi chưa đọc được tiêu đề."""
+    upper_num = doc_number.upper().replace("–", "-")
+    if "/NĐ-CP" in upper_num or "/ND-CP" in upper_num:
+        return "decree"
+    if "/TT-" in upper_num or "/TTLT-" in upper_num or upper_num.endswith("/TT"):
+        return "circular"
+    if "/NQ-" in upper_num or upper_num.endswith("/NQ"):
+        return "resolution"
+    if "/QH" in upper_num:
+        return "law"
+
+    stem = Path(filename).stem.lower().replace("đ", "d")
+    ascii_stem = unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode("ascii")
+    norm_stem = re.sub(r"[^a-z0-9]+", "-", ascii_stem).strip("-")
+    if re.search(r"(?:^|-)(?:nd-cp|nghi-dinh)(?:-|$)", norm_stem):
+        return "decree"
+    if re.search(r"(?:^|-)(?:ttlt|thong-tu|tt)(?:-|$)", norm_stem):
+        return "circular"
+    if re.search(r"(?:^|-)(?:nghi-quyet|nq)(?:-|$)", norm_stem):
+        return "resolution"
+    return "law"
+
+
+def _extract_typed_title(prefix_label: str, line: str, header_lines: list[str], index: int) -> str:
+    """Ghép tên loại văn bản và phần trích yếu dù nằm cùng một dòng hay tách nhiều dòng."""
+    inline_rest = line.strip()[len(prefix_label):].strip(" .:-")
+    if inline_rest:
+        return f"{prefix_label.capitalize()} {inline_rest}"
+    title_candidates: list[str] = []
+    stop_pattern = re.compile(
+        r"^(?:Phần|Chương|Mục|Điều|Căn cứ|Theo đề nghị|Xét đề nghị)\b",
+        re.IGNORECASE,
+    )
+    for j in range(index + 1, min(index + 6, len(header_lines))):
+        candidate = header_lines[j]
+        if candidate.startswith("---") or "Căn cứ" in candidate or stop_pattern.match(candidate):
+            break
+        title_candidates.append(candidate)
+    if title_candidates:
+        return " ".join(title_candidates).strip()
+    return line.strip()
+
+
 def extract_metadata_heuristic(text: str, filename: str = "") -> dict[str, Any]:
     """Bóc tách thông tin phân loại văn bản theo quy tắc heuristic & biểu thức chính quy.
     
     Phù hợp với thể thức trình bày văn bản theo Nghị định 30/2020/NĐ-CP.
     """
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    lines = [cleaned for line in text.splitlines() if (cleaned := clean_legal_line(line))]
     header_lines = lines[:100]  # Quét 100 dòng đầu trang cho phần tiêu đề & số hiệu
     footer_lines = lines[-80:] if len(lines) > 80 else lines  # Quét phần điều khoản thi hành
 
@@ -134,7 +199,12 @@ def extract_metadata_heuristic(text: str, filename: str = "") -> dict[str, Any]:
                 break
 
     # 2. Trích xuất Số ký hiệu văn bản
-    match_num = REGEX_DOC_NUMBER.search(header_text)
+    # Chỉ chấp nhận dòng số hiệu độc lập ở phần đầu để tránh lấy số văn bản được trích dẫn.
+    compilation_heading = next((index for index, line in enumerate(header_lines[:10])
+                                if re.match(r"^(?:CHUYÊN ĐỀ|SỔ TAY|GIÁO TRÌNH)\b", line, re.IGNORECASE)), None)
+    number_header = header_lines[:compilation_heading] if compilation_heading is not None else header_lines[:25]
+    match_num = next((match for line in number_header
+                      if (match := REGEX_DOC_NUMBER.fullmatch(line))), None)
     if match_num:
         metadata["doc_number"] = match_num.group(1).strip()
     else:
@@ -178,54 +248,29 @@ def extract_metadata_heuristic(text: str, filename: str = "") -> dict[str, Any]:
         if upper_line.startswith("NGHỊ ĐỊNH"):
             metadata["document_type"] = "decree"
             doc_type_found = True
-            # Tìm dòng trích yếu sau dòng Nghị định
-            title_candidates = []
-            for j in range(i + 1, min(i + 6, len(header_lines))):
-                candidate = header_lines[j]
-                if candidate.startswith("---") or "Căn cứ" in candidate:
-                    break
-                title_candidates.append(candidate)
-            if title_candidates:
-                metadata["doc_title"] = " ".join(title_candidates).strip()
-            else:
-                metadata["doc_title"] = line.strip()
+            metadata["doc_title"] = _extract_typed_title("NGHỊ ĐỊNH", line, header_lines, i)
             break
 
         # Nhận diện Thông tư
         if upper_line.startswith("THÔNG TƯ"):
             metadata["document_type"] = "circular"
             doc_type_found = True
-            title_candidates = []
-            for j in range(i + 1, min(i + 6, len(header_lines))):
-                candidate = header_lines[j]
-                if candidate.startswith("---") or "Căn cứ" in candidate:
-                    break
-                title_candidates.append(candidate)
-            if title_candidates:
-                metadata["doc_title"] = " ".join(title_candidates).strip()
-            else:
-                metadata["doc_title"] = line.strip()
+            metadata["doc_title"] = _extract_typed_title("THÔNG TƯ", line, header_lines, i)
             break
 
         # Nhận diện Nghị quyết
         if upper_line.startswith("NGHỊ QUYẾT"):
             metadata["document_type"] = "resolution"
             doc_type_found = True
-            title_candidates = []
-            for j in range(i + 1, min(i + 6, len(header_lines))):
-                candidate = header_lines[j]
-                if candidate.startswith("---") or "Căn cứ" in candidate:
-                    break
-                title_candidates.append(candidate)
-            if title_candidates:
-                metadata["doc_title"] = " ".join(title_candidates).strip()
-            else:
-                metadata["doc_title"] = line.strip()
+            metadata["doc_title"] = _extract_typed_title("NGHỊ QUYẾT", line, header_lines, i)
             break
 
-    # Nếu cơ quan là Quốc hội nhưng chưa xác định loại, mặc định là law
-    if not doc_type_found and metadata["issuing_authority"] == "Quốc hội":
-        metadata["document_type"] = "law"
+    # Suy luận loại văn bản từ số hiệu hoặc tên tệp nếu chưa khớp tiêu đề loại văn bản
+    if not doc_type_found:
+        if metadata["issuing_authority"] == "Quốc hội":
+            metadata["document_type"] = "law"
+        else:
+            metadata["document_type"] = _infer_document_type_from_hint(filename, metadata["doc_number"])
 
     # Đánh giá độ tin cậy của tầng heuristic
     has_number = bool(metadata["doc_number"])
@@ -314,11 +359,12 @@ def auto_extract_metadata(data: bytes, filename: str) -> dict[str, Any]:
     if not text.strip():
         fallback_title = filename.rsplit(".", 1)[0]
         return {
-            "doc_number": "",
+            "doc_number": readable_document_number("", filename),
             "doc_title": fallback_title,
-            "document_type": "law",
+            "document_type": _infer_document_type_from_hint(filename),
             "issuing_authority": "",
             "issued_date": date.today().isoformat(),
+            "issued_date_fallback": True,
             "effective_date": None,
             "effective_status": "active",
             "scope": "public",
@@ -334,6 +380,7 @@ def auto_extract_metadata(data: bytes, filename: str) -> dict[str, Any]:
     if heuristic_res.get("confidence") == "high":
         if not heuristic_res.get("issued_date"):
             heuristic_res["issued_date"] = date.today().isoformat()
+            heuristic_res["issued_date_fallback"] = True
         return heuristic_res
 
     # Bước 2: Kích hoạt LLM Fallback nếu Heuristic thiếu trường quan trọng
@@ -341,6 +388,12 @@ def auto_extract_metadata(data: bytes, filename: str) -> dict[str, Any]:
     if llm_res:
         # Kết hợp dữ liệu: Ưu tiên giá trị có nghĩa từ LLM bổ sung cho Heuristic
         combined = {**heuristic_res, **{k: v for k, v in llm_res.items() if v}}
+        if (re.search(r"(?im)^\s*(?:CHUYÊN ĐỀ|SỔ TAY|GIÁO TRÌNH)\b",
+                      "\n".join(text.splitlines()[:10])) and not heuristic_res["doc_number"]):
+            # Tài liệu chuyên đề không được nhận số của văn bản chỉ được trích dẫn.
+            combined["doc_number"] = readable_document_number(text, filename, combined.get("doc_title") or "")
+        if not combined.get("doc_number"):
+            combined["doc_number"] = readable_document_number(text, filename, combined.get("doc_title") or "")
         for key in ("doc_title", "issuing_authority"):
             original = heuristic_res.get(key) or ""
             proposed = llm_res.get(key) or ""
@@ -348,14 +401,19 @@ def auto_extract_metadata(data: bytes, filename: str) -> dict[str, Any]:
             if original and proposed and _has_vietnamese_marks(original) and not _has_vietnamese_marks(proposed):
                 combined[key] = original
         combined["extracted_by"] = "hybrid" if heuristic_res.get("confidence") == "medium" else "llm"
-        combined["confidence"] = "high"
+        combined["confidence"] = ("medium" if str(combined.get("doc_number") or "").startswith(("CD-", "ST-", "GT-", "TL-"))
+                                  else "high" if combined.get("doc_number") else "medium")
         if not combined.get("issued_date"):
             combined["issued_date"] = date.today().isoformat()
+            combined["issued_date_fallback"] = True
         return combined
 
     # Bước 3: Dự phòng cuối cùng nếu LLM không khả dụng hoặc lỗi
     fallback_title = heuristic_res.get("doc_title") or filename.rsplit(".", 1)[0]
     heuristic_res["doc_title"] = fallback_title
+    if not heuristic_res.get("doc_number"):
+        heuristic_res["doc_number"] = readable_document_number(text, filename, fallback_title)
     if not heuristic_res.get("issued_date"):
         heuristic_res["issued_date"] = date.today().isoformat()
+        heuristic_res["issued_date_fallback"] = True
     return heuristic_res

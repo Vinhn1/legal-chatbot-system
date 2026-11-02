@@ -1,0 +1,118 @@
+# ============================================================
+# Quy tắc Git Ignore — Legal Chatbot System (Monorepo)
+# ============================================================
+
+# ─── Environment Variables (NEVER commit secrets) ───────────
+.env
+.env.*
+!.env.example
+
+# ─── Python ─────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+*.pyc
+
+# ─── Node.js ────────────────────────────────────────────────
+node_modules/
+.npm
+dist/
+.next/
+out/
+build/
+*.local
+
+# ─── TypeScript build cache ──────────────────────────────────
+*.tsbuildinfo
+
+# ─── Databases & Vector Stores ──────────────────────────────
+.chroma/
+chroma.db
+ai-core/chroma_db/
+ai-core/data/chroma/
+**/chroma_db/
+faiss_index/
+
+# ─── Log files ──────────────────────────────────────────────
+*.log
+logs/
+backend/start.log
+
+# ─── Temporary / Scratch files ───────────────────────────────
+scratch/
+temp_*/
+temp_*.py
+temp_*.txt
+**/temp_uploads/
+frontend/temp_*.txt
+ai-core/out.txt
+ai-core/test_output.txt
+
+# ─── Archive and Encrypted files ────────────────────────────
+*.tar.gz
+*.enc
+*.sha256
+
+# ─── Eval / Test output files & scripts ─────────────────────
+ai-core/eval_dataset_100.json
+ai-core/dynamic_suggestions.json
+ai-core/eval_accuracy_report.json
+ai-core/eval_accuracy_report.md
+ai-core/eval_accuracy.py
+ai-core/generate_eval_dataset.py
+ai-core/run_eval_ci.py
+ai-core/run_eval_ci.bat
+ai-core/validate_final.py
+ai-core/reports/
+
+# ─── Browser automation profiles ────────────────────────────
+ai-core/browser_profiles/
+
+# ─── Data pipeline raw/processed data ───────────────────────
+**/data/raw/
+**/data/processed/
+**/data/*.json
+**/data/*.csv
+**/data/*.jsonl
+# Exception: config files in data/ phải được track (không phải raw/generated data)
+crawl_summary.json
+
+# ─── GitHub Workflows (Requires workflow PAT scope to push) ──
+.github/
+
+# ─── IDEs & OS ──────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ─── AI Agent Configuration (AG Kit / Claude) ───────────────
+.agent/
+.agents/
+agent-skills/
+.claude/
+.claude-plugin/
+.gemini/
+.opencode/
+
+# Chỉ theo dõi tài liệu kỹ thuật chính thức trong docs; giữ tư liệu lịch sử ngoài bản phát hành.
+docs/*
+!docs/ARCHITECTURE.md
+!docs/BACKUP_GUIDE.md
+!docs/BACKUP_SYSTEM_PROPOSAL.md
+!docs/DATA_INGEST_GUIDE.md
+!docs/UI_DESIGN_BRIEF.md
+!docs/UI_REFERENCES.md
+!docs/WSL_RUNBOOK.md
+!docs/ADMIN_SYSTEM_ENHANCEMENT_PLAN.md
+ai-core/data/rag-config/
+ai-core/data/reconstructed/
+private-backups/
+storage/raw_documents/*
+!storage/raw_documents/.gitkeep
+storage/backups/*
+!storage/backups/.gitkeep

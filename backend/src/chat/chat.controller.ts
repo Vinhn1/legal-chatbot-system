@@ -1,6 +1,6 @@
 import {
   Body, Controller, Delete, Get, HttpException, HttpStatus, Param,
-  Post, Query, UploadedFile, UseGuards, UseInterceptors,
+  Post, Query, Request, UploadedFile, UseGuards, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ChatService } from './chat.service';
@@ -16,7 +16,7 @@ export class ChatController {
   /** Xác thực câu hỏi công khai trước khi chuyển sang dịch vụ truy xuất pháp luật. */
   @Post()
   @UseGuards(RateLimiterGuard)
-  async handleChat(@Body('message') message: string, @Body('sessionId') sessionId?: string) {
+  async handleChat(@Body('message') message: string, @Body('sessionId') sessionId?: string, @Body('sessionToken') sessionToken?: string) {
     if (typeof message !== 'string' || !message.trim()) {
       throw new HttpException('Tin nhắn không được để trống', HttpStatus.BAD_REQUEST);
     }
@@ -28,7 +28,9 @@ export class ChatController {
     if (/<\s*script\b|\bon\w+\s*=|javascript\s*:/i.test(normalized)) {
       throw new HttpException('Câu hỏi chứa nội dung không hợp lệ', HttpStatus.BAD_REQUEST);
     }
-    return this.chatService.sendMessageToAi(normalized, sessionId);
+    const session = this.chatService.authorizeSession(sessionId, sessionToken);
+    const answer = await this.chatService.sendMessageToAi(normalized, session.sessionId);
+    return { ...answer, ...session };
   }
 
   /** Cung cấp số liệu công khai đã được AI Core lọc theo quyền truy cập. */
@@ -39,14 +41,27 @@ export class ChatController {
 
   @Get('history')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  getHistory() {
-    return this.chatService.getAllHistory();
+  @Roles('admin', 'staff')
+  getHistory(@Query('before') before?: string, @Query('limit') limit?: string, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.chatService.getAllHistory(before === undefined ? undefined : Number(before), limit === undefined ? 100 : Number(limit), from, to);
+  }
+
+  /** Các chỉ số không phụ thuộc nội dung câu từ chối. */
+  @Get('analytics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'staff')
+  analytics() { return this.chatService.analytics(); }
+
+  @Post('history/:sessionId/review')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'staff')
+  review(@Param('sessionId') sessionId: string, @Body('status') status: string, @Request() req: any) {
+    return this.chatService.review(sessionId, status, req.user.userId);
   }
 
   @Get('history/:sessionId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'staff')
   getSessionHistory(@Param('sessionId') sessionId: string) {
     return this.chatService.getSessionHistory(sessionId);
   }
@@ -74,16 +89,21 @@ export class ChatController {
   @Post('model-config')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  updateModelConfig(@Body() input: { provider?: string; api_key?: string }) { return this.chatService.updateModelConfig(input); }
+  updateModelConfig(@Body() input: { provider?: string; api_key?: string; embedding_api_key?: string }) { return this.chatService.updateModelConfig(input); }
 
   @Post('model-test')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   testModelConnection(@Body() input: { provider?: string; api_key?: string }) { return this.chatService.testModelConnection(input); }
 
-  @Get('documents')
+  @Post('embedding-test')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
+  testEmbeddingConnection(@Body() input: { api_key?: string }) { return this.chatService.testEmbeddingConnection(input); }
+
+  @Get('documents')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'staff')
   getDocuments() {
     return this.chatService.getDocuments();
   }
@@ -100,7 +120,7 @@ export class ChatController {
 
   @Post('ingest-url')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'staff')
   ingestFromUrl(@Body('url') url: string) {
     if (!url) {
       throw new HttpException('Thiếu URL', HttpStatus.BAD_REQUEST);
@@ -110,7 +130,7 @@ export class ChatController {
 
   @Post('ingest-html')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'staff')
   ingestFromHtml(
     @Body('source_title') sourceTitle: string,
     @Body('html_content') htmlContent: string,
@@ -124,14 +144,25 @@ export class ChatController {
 
   @Get('documents/web-chunks')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'staff')
   getWebDocumentChunks(@Query('name') name: string) {
     return this.chatService.getWebDocumentChunks(name);
   }
 
+  /** Trả danh sách các đoạn hoặc Điều đã lập chỉ mục của một văn bản cụ thể cho ngăn kéo chi tiết. */
+  @Get('documents/:id/chunks')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'staff')
+  getDocumentChunks(@Param('id') id: string) {
+    if (!id || !/^[A-Za-z0-9_:-]{1,120}$/.test(id)) {
+      throw new HttpException('Mã tài liệu không hợp lệ', HttpStatus.BAD_REQUEST);
+    }
+    return this.chatService.getDocumentChunks(id);
+  }
+
   @Post('upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'staff')
   // Giới hạn ngay tại lớp nhận multipart trước khi chuyển tệp tới AI Core.
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 15 * 1024 * 1024 } }))
   uploadFile(@UploadedFile() file: any) {

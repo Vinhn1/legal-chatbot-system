@@ -5,11 +5,19 @@ import { LegalArticle } from './entities/legal-article.entity';
 import { LegalDocument } from './entities/legal-document.entity';
 import { LegalController } from './legal.controller';
 import { LegalService } from './legal.service';
+import { IngestionJobsService } from './ingestion-jobs.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { DocumentParserModule } from '../document-parser/document-parser.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([LegalDocument, LegalArticle]), HttpModule],
+  imports: [
+    TypeOrmModule.forFeature([LegalDocument, LegalArticle]),
+    HttpModule,
+    NotificationsModule,
+    DocumentParserModule,
+  ],
   controllers: [LegalController],
-  providers: [LegalService],
-  exports: [LegalService],
+  providers: [LegalService, IngestionJobsService],
+  exports: [LegalService, IngestionJobsService],
 })
 export class LegalModule {}

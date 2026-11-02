@@ -12,6 +12,8 @@ from urllib.parse import urlsplit
 
 
 MAX_FILE_BYTES = 15 * 1024 * 1024
+MAX_PDF_PAGES = 100
+
 _INJECTION_PATTERNS = (
     r"\bbo qua\s+(?:moi\s+)?(?:huong dan|chi dan|lenh|quy tac)",
     r"\btiet lo\s+(?:system prompt|prompt he thong|api key|token|bi mat)",
@@ -63,6 +65,8 @@ def validate_public_url(url: str) -> str:
         raise ValueError("URL nạp văn bản không hợp lệ.") from exc
     if parsed.scheme.lower() not in {"http", "https"} or not hostname or "@" in parsed.netloc or parsed.fragment:
         raise ValueError("Chỉ chấp nhận URL HTTP(S) công khai.")
+    if port is not None and port not in (80, 443):
+        raise ValueError("Chỉ chấp nhận cổng HTTP (80) hoặc HTTPS (443) tiêu chuẩn.")
     normalized_host = hostname.lower().rstrip(".")
     if normalized_host == "localhost" or normalized_host.endswith(".localhost"):
         raise ValueError("Không được nạp văn bản từ địa chỉ nội bộ.")
@@ -104,6 +108,16 @@ def validate_upload(data: bytes, filename: str) -> str:
     if extension == ".pdf":
         if not data.startswith(b"%PDF-"):
             raise ValueError("Nội dung tệp PDF không hợp lệ.")
+        try:
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(data))
+            if len(reader.pages) > MAX_PDF_PAGES:
+                raise ValueError(f"Tệp PDF vượt quá giới hạn cho phép (tối đa {MAX_PDF_PAGES} trang).")
+        except ValueError:
+            raise
+        except Exception:
+            # Bỏ qua nếu pypdf không đọc được một số cấu trúc PDF đặc thù
+            pass
     elif extension == ".docx":
         if not data.startswith(b"PK\x03\x04"):
             raise ValueError("Nội dung tệp DOCX không hợp lệ.")

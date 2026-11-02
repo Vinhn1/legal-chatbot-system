@@ -15,12 +15,16 @@ import { LegalModule } from './legal/legal.module';
 import { LegalDocument } from './legal/entities/legal-document.entity';
 import { LegalArticle } from './legal/entities/legal-article.entity';
 import { ModelConfig } from './chat/model-config.entity';
+import { DocumentParserModule } from './document-parser/document-parser.module';
+import { BackupModule } from './backup/backup.module';
 
 @Module({
   imports: [
     // 1. Load các biến môi trường từ file .env ra toàn app (isGlobal: true)
     ConfigModule.forRoot({
       isGlobal: true,
+      // Bộ test tích hợp chỉ dùng biến giả lập, không đọc cấu hình vận hành.
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
     }),
 
     // 2. Cấu hình kết nối PostgreSQL sử dụng các biến từ ConfigService
@@ -37,23 +41,18 @@ import { ModelConfig } from './chat/model-config.entity';
         entities: [User, ChatHistory, LegalDocument, LegalArticle, ModelConfig],
         // Tự động đồng bộ hóa cấu trúc bảng trong Code với Database (tắt ở production/staging)
         synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
-
       }),
     }),
 
     ChatModule,
-
-
     ChatHistoryModule,
-
     UsersModule,
-
     AuthModule,
-
-
     NotificationsModule,
     EmailModule,
     LegalModule,
+    DocumentParserModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [AppService],

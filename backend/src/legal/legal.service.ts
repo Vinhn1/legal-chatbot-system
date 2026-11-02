@@ -5,6 +5,8 @@ import { LegalArticle, LegalUnitType } from './entities/legal-article.entity';
 import { AccessScope, EffectiveStatus, LegalDocument, LegalDocumentType } from './entities/legal-document.entity';
 
 export interface CreateLegalDocument {
+  // Dùng cùng định danh tài liệu do AI Core phát hành để đối soát hai kho.
+  id?: string;
   documentNumber: string;
   documentType: LegalDocumentType;
   title: string;
@@ -31,9 +33,12 @@ export interface CreateLegalUnit {
 }
 
 const ALLOWED_PARENTS: Record<LegalUnitType, Array<LegalUnitType | null>> = {
-  [LegalUnitType.CHAPTER]: [null],
-  [LegalUnitType.SECTION]: [LegalUnitType.CHAPTER],
-  [LegalUnitType.ARTICLE]: [null, LegalUnitType.CHAPTER, LegalUnitType.SECTION],
+  [LegalUnitType.PART]: [null],
+  [LegalUnitType.CHAPTER]: [null, LegalUnitType.PART],
+  [LegalUnitType.SECTION]: [null, LegalUnitType.PART, LegalUnitType.CHAPTER],
+  [LegalUnitType.SUBSECTION]: [null, LegalUnitType.PART, LegalUnitType.CHAPTER, LegalUnitType.SECTION],
+  [LegalUnitType.GENERAL]: [null, LegalUnitType.PART, LegalUnitType.CHAPTER, LegalUnitType.SECTION, LegalUnitType.SUBSECTION],
+  [LegalUnitType.ARTICLE]: [null, LegalUnitType.PART, LegalUnitType.CHAPTER, LegalUnitType.SECTION, LegalUnitType.SUBSECTION],
   [LegalUnitType.CLAUSE]: [LegalUnitType.ARTICLE],
   [LegalUnitType.POINT]: [LegalUnitType.CLAUSE],
 };
@@ -128,7 +133,7 @@ export class LegalService {
       throw new BadRequestException('Đơn vị cha phải thuộc cùng văn bản.');
     }
     if (!ALLOWED_PARENTS[input.unitType].includes(parent?.unitType ?? null)) {
-      throw new BadRequestException('Quan hệ Chương/Mục/Điều/Khoản/Điểm không hợp lệ.');
+      throw new BadRequestException('Quan hệ phân cấp đơn vị pháp lý không hợp lệ.');
     }
     return this.units.save(this.units.create({ ...input, parentId: parent?.id ?? null }));
   }
@@ -146,5 +151,21 @@ export class LegalService {
       return EffectiveStatus.ACTIVE;
     }
     return document.effectiveStatus;
+  }
+
+  /** Xóa văn bản và toàn bộ đơn vị phân cấp liên quan theo tiêu đề, số hiệu hoặc id. */
+  async deleteDocumentByName(target: string): Promise<boolean> {
+    const trimmed = target.trim();
+    if (!trimmed) return false;
+    const doc = await this.documents.findOne({
+      where: [
+        { title: trimmed },
+        { documentNumber: trimmed },
+        ...(trimmed.length === 36 ? [{ id: trimmed }] : []),
+      ],
+    });
+    if (!doc) return false;
+    await this.documents.remove(doc);
+    return true;
   }
 }

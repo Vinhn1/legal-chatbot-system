@@ -9,7 +9,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   // Tùy biến thông điệp lỗi khi Token không hợp lệ hoặc không có Token
-  handleRequest(err, user, info) {
+  handleRequest(err, user, _info) {
     if (err || !user) {
       throw err || new UnauthorizedException('Bạn chưa đăng nhập hoặc Token không hợp lệ');
     }

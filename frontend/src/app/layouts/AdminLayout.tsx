@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import {
   BarChart3,
-  ExternalLink,
   Files,
+  Globe,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -17,10 +17,13 @@ import {
   Settings,
   UploadCloud,
   X,
+  HardDriveDownload,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { LegalLogo } from "../components/LegalLogo";
 import { useTheme } from "../context/useTheme";
+import { IngestJobsProvider } from "../context/IngestJobsContext";
+import { NotificationBellPopover } from "../components/NotificationBellPopover";
 
 /**
  * Khung giao diện Quản trị Veritas Legal — Chuẩn Canvas Variant 03
@@ -29,8 +32,14 @@ import { useTheme } from "../context/useTheme";
  */
 export function AdminLayout() {
   const { user, logout } = useAuth();
-  const { mode, setMode } = useTheme();
+  const { mode, setMode, setDarkScopeActive } = useTheme();
   const navigate = useNavigate();
+
+  // Chỉ cho phép chế độ tối trong khu vực quản trị; tự gỡ khi rời sang trang công khai.
+  useEffect(() => {
+    setDarkScopeActive(true);
+    return () => setDarkScopeActive(false);
+  }, [setDarkScopeActive]);
   const location = useLocation();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -43,7 +52,8 @@ export function AdminLayout() {
     { to: "/admin/conversations", label: "Cuộc hội thoại", icon: MessagesSquare, end: false },
     { to: "/admin/analytics", label: "Thống kê", icon: BarChart3, end: false },
     ...(user?.role === "admin" ? [{ to: "/admin/users", label: "Người dùng", icon: Users, end: false }] : []),
-    { to: "/admin/settings", label: "Cài đặt", icon: Settings, end: false },
+    ...(user?.role === "admin" ? [{ to: "/admin/backups", label: "Sao lưu & Dữ liệu", icon: HardDriveDownload, end: false }] : []),
+    ...(user?.role === "admin" ? [{ to: "/admin/settings", label: "Cài đặt", icon: Settings, end: false }] : []),
   ];
 
   const handleLogout = () => {
@@ -59,9 +69,10 @@ export function AdminLayout() {
   const isChatPlayground = location.pathname === "/admin/chat";
 
   return (
-    <div className="admin-shell flex h-screen w-full overflow-hidden bg-[#faf9f6] text-[#142747] antialiased dark:bg-slate-900 dark:text-slate-100">
+    <IngestJobsProvider>
+      <div className="admin-shell flex h-screen w-full overflow-hidden bg-[#faf9f6] text-[#142747] antialiased dark:bg-black dark:text-zinc-100">
       {/* Sidebar Desktop */}
-      <aside className="hidden w-[230px] shrink-0 border-r border-[#d8dee5] bg-[#f8f8f6] dark:border-slate-800 dark:bg-slate-900 flex-col justify-between p-4 md:flex h-full overflow-y-auto board-scroll">
+      <aside className="hidden w-[230px] shrink-0 border-r border-[#d8dee5] bg-[#f8f8f6] dark:border-zinc-800 dark:bg-[#09090b] flex-col justify-between p-4 md:flex h-full overflow-y-auto board-scroll">
         <div>
           {/* Logo Veritas Legal */}
           <Link
@@ -143,7 +154,7 @@ export function AdminLayout() {
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <aside className="relative flex w-[260px] flex-col justify-between bg-[#f8f8f6] dark:bg-slate-900 p-5 shadow-2xl z-10 animate-fade-in-up">
+          <aside className="relative flex w-[260px] flex-col justify-between bg-[#f8f8f6] dark:bg-[#09090b] p-5 shadow-2xl z-10 animate-fade-in-up">
             <div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div className="flex items-center gap-2.5">
@@ -182,7 +193,7 @@ export function AdminLayout() {
             </div>
 
             <div className="border-t border-slate-200 pt-4 flex items-center justify-between">
-              <Link to="/admin/profile" onClick={() => setMobileSidebarOpen(false)} className="text-xs font-bold text-[#142747] dark:text-slate-100">{user?.name || "Admin"}</Link>
+              <Link to="/admin/profile" onClick={() => setMobileSidebarOpen(false)} className="text-xs font-bold text-[#142747] dark:text-zinc-100">{user?.name || "Admin"}</Link>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -198,7 +209,7 @@ export function AdminLayout() {
       {/* Main Column */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* Top Header Bar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#d8dee5] bg-white/95 dark:border-slate-800 dark:bg-slate-900/95 px-5 backdrop-blur-md sm:px-8 z-30">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#d8dee5] bg-white/95 dark:border-zinc-800 dark:bg-[#09090b]/95 px-5 backdrop-blur-md sm:px-8 z-30">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -215,19 +226,21 @@ export function AdminLayout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <NotificationBellPopover />
             <button type="button" onClick={() => setMode(mode === "light" ? "dark" : mode === "dark" ? "system" : "light")}
               aria-label={`Chế độ giao diện: ${mode}. Bấm để chuyển`} title={`Giao diện: ${mode}`}
-              className="rounded-xl border border-[#cbd5df] p-2 text-[#142747] dark:border-slate-700 dark:text-slate-100">
+              className="rounded-xl border border-[#cbd5df] p-2 text-[#142747] dark:border-zinc-800 dark:text-zinc-100">
               {mode === "dark" ? <Moon size={17} /> : mode === "system" ? <Laptop size={17} /> : <Sun size={17} />}
             </button>
-            <Link to="/admin/profile" aria-label="Hồ sơ cá nhân" className="rounded-xl border border-[#cbd5df] p-2 dark:border-slate-700"><UserRound size={17} /></Link>
+            <Link to="/admin/profile" aria-label="Hồ sơ cá nhân" className="rounded-xl border border-[#cbd5df] p-2 dark:border-zinc-800"><UserRound size={17} /></Link>
             <Link
               to="/"
-              target="_blank"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-[#cbd5df] bg-white px-3.5 py-1.5 text-xs font-bold text-[#516278] hover:bg-slate-50"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-[#cbd5df] bg-white px-3.5 py-1.5 text-xs font-bold text-[#516278] hover:bg-slate-50 transition-colors dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              title="Quay lại Cổng công khai"
             >
-              Xem Cổng công khai <ExternalLink size={13} />
+              <Globe size={13} className="text-[#1d4f88] dark:text-blue-400" />
+              Xem Cổng công khai
             </Link>
             <span className="rounded-full bg-[#f4eddf] px-3 py-1 text-xs font-bold text-[#80643c]">
               {user?.role === "admin" ? "Quản trị viên" : "Chuyên viên"}
@@ -235,13 +248,14 @@ export function AdminLayout() {
           </div>
         </header>
 
-        {/* Trang thử chatbot khóa cuộn ngoài; các trang khác vẫn cuộn theo nội dung. */}
-        <main className={`min-h-0 flex-1 p-5 sm:p-8 min-w-0 board-scroll ${isChatPlayground ? "overflow-hidden" : "overflow-y-auto"}`}>
-          <div className={`max-w-7xl mx-auto w-full ${isChatPlayground ? "h-full min-h-0" : "pb-16"}`}>
+        {/* Trang thử chatbot tràn viền toàn vùng làm việc; các trang khác vẫn cuộn theo nội dung. */}
+        <main className={`min-h-0 flex-1 min-w-0 board-scroll ${isChatPlayground ? "overflow-hidden p-0" : "overflow-y-auto p-5 sm:p-8"}`}>
+          <div className={isChatPlayground ? "h-full min-h-0 w-full" : "max-w-7xl mx-auto w-full pb-16"}>
             <Outlet />
           </div>
         </main>
       </div>
     </div>
+    </IngestJobsProvider>
   );
 }

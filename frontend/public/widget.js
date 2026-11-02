@@ -47,11 +47,14 @@
   var config = {
     baseUrl: (currentScript && currentScript.getAttribute("data-chat-url")) || defaultBaseUrl,
     position: (currentScript && currentScript.getAttribute("data-position")) || savedPosition || "bottom-right",
-    themeColor: (currentScript && currentScript.getAttribute("data-theme-color")) || savedThemeColor || "#005BAA",
+    themeColor: (currentScript && currentScript.getAttribute("data-theme-color")) || savedThemeColor || "#1d4f88",
     botName: (currentScript && currentScript.getAttribute("data-bot-name")) || savedBotName || "Trợ lý Pháp luật",
     greeting: (currentScript && currentScript.getAttribute("data-greeting")) || savedGreeting || "",
     autoOpen: (currentScript && currentScript.getAttribute("data-auto-open")) === "true",
   };
+
+  // Xác thực mã màu hex hợp lệ để tránh chèn CSS nguy hiểm
+  var safeThemeColor = /^#[0-9a-fA-F]{6}$/.test(config.themeColor) ? config.themeColor : "#1d4f88";
 
   // Custom style injection
   var style = document.createElement("style");
@@ -98,7 +101,7 @@
     .mbf-widget-launcher.mbf-open-state {
       width: 60px;
       height: 60px;
-      background: linear-gradient(135deg, ${config.themeColor} 0%, #0c1829 100%);
+      background: linear-gradient(135deg, ${safeThemeColor} 0%, #0c1829 100%);
       border: 2px solid #ffffff;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
       margin: 18px;
@@ -257,7 +260,7 @@
 
   // Xây dựng URL params cho /embed
   var embedParams = new URLSearchParams();
-  embedParams.set("theme", config.themeColor);
+  embedParams.set("theme", safeThemeColor);
   embedParams.set("title", config.botName);
   if (config.greeting) {
     embedParams.set("greeting", config.greeting);
@@ -272,17 +275,17 @@
   iframe.allow = "microphone; camera";
   iframeContainer.appendChild(iframe);
 
-  // Tooltip
+  // Tooltip an toàn tránh XSS
   var tooltip = document.createElement("div");
   tooltip.className = "mbf-widget-tooltip";
-  tooltip.innerHTML = `
-    <div class="mbf-widget-tooltip-title">
-      ${config.botName || "Trợ lý Tra cứu Pháp luật Việt Nam"}
-    </div>
-    <div class="mbf-widget-tooltip-sub">
-      <span class="mbf-widget-tooltip-dot"></span> Trực tuyến · Sẵn sàng hỗ trợ pháp lý
-    </div>
-  `;
+  var tooltipTitle = document.createElement("div");
+  tooltipTitle.className = "mbf-widget-tooltip-title";
+  tooltipTitle.textContent = config.botName || "Trợ lý Tra cứu Pháp luật Việt Nam";
+  var tooltipSub = document.createElement("div");
+  tooltipSub.className = "mbf-widget-tooltip-sub";
+  tooltipSub.innerHTML = '<span class="mbf-widget-tooltip-dot"></span> Trực tuyến · Sẵn sàng hỗ trợ pháp lý';
+  tooltip.appendChild(tooltipTitle);
+  tooltip.appendChild(tooltipSub);
   container.appendChild(tooltip);
 
   // Nút launcher tròn
@@ -434,7 +437,7 @@
     } else {
       iframeContainer.classList.remove("mbf-open");
       launcher.classList.remove("mbf-open-state");
-      iconWrapper.innerHTML = miaAvatarSvg;
+      iconWrapper.innerHTML = legalRobotAvatarSvg;
       tooltip.style.display = "";
     }
   }
@@ -449,9 +452,15 @@
 
   launcher.addEventListener("click", toggleWidget);
 
-  // Lắng nghe sự kiện postMessage từ trang iframe chat
+  // Lắng nghe sự kiện postMessage từ trang iframe chat (có kiểm tra origin an toàn)
   window.addEventListener("message", function (event) {
     if (!event.data || typeof event.data !== "object") return;
+    try {
+      var expectedOrigin = new URL(config.baseUrl, window.location.href).origin;
+      if (event.origin !== expectedOrigin) return;
+    } catch (_) {
+      return;
+    }
 
     if (event.data.type === "LEGAL_WIDGET_CLOSE") {
       closeWidget();

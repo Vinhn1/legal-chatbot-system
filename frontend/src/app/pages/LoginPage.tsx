@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router";
 import { Lock, Eye, EyeOff, ArrowRight, ChevronLeft, Mail, Shield, KeyRound, ShieldCheck, Scale } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/useTheme";
 import { LegalLogo } from "../components/LegalLogo";
 
 /**
@@ -55,6 +56,14 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const isSessionExpired = searchParams.get("reason") === "expired";
   const { login, verify2faLogin } = useAuth();
+  const { setDarkScopeActive } = useTheme();
+
+  // Đảm bảo trang đăng nhập luôn luôn giữ giao diện sáng tiêu chuẩn
+  useEffect(() => {
+    setDarkScopeActive(false);
+    document.documentElement.classList.remove("dark");
+    document.documentElement.style.colorScheme = "light";
+  }, [setDarkScopeActive]);
 
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
@@ -85,6 +94,10 @@ export function LoginPage() {
       } else if (role === "require_2fa") {
         setLoginId(id.trim());
         setIs2faRequired(true);
+      } else if (role === "rate_limited") {
+        setError("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng đợi ít phút rồi thử lại.");
+      } else if (role === "server_error") {
+        setError("Dịch vụ xác thực đang bận hoặc chưa sẵn sàng. Vui lòng thử lại sau.");
       } else {
         setError("Thông tin đăng nhập chưa chính xác. Vui lòng kiểm tra lại.");
       }
@@ -148,17 +161,17 @@ export function LoginPage() {
               Một lối vào rõ ràng cho người vận hành.
             </h1>
             <p className="mt-4 text-base sm:text-lg leading-relaxed text-[#56677c]">
-              Dành riêng cho Quản trị viên và Chuyên viên pháp lý. Hệ thống bảo vệ dữ liệu với phân quyền nghiêm ngặt và cơ chế xác thực hai lớp (2FA).
+              Dành riêng cho Quản trị viên và Chuyên viên pháp lý. Hệ thống bảo vệ dữ liệu với phân quyền nghiêm ngặt và cơ chế xác thực hai lớp bảo mật.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3 text-xs sm:text-sm text-[#4d5e72]">
               <span className="inline-flex items-center gap-2 rounded-xl border border-[#d5dce2] bg-white px-4 py-2.5 shadow-2xs font-semibold">
                 <KeyRound size={17} className="text-[#1d4f88]" />
-                Phân quyền Admin / Staff
+                Phân quyền Quản trị & Chuyên viên
               </span>
               <span className="inline-flex items-center gap-2 rounded-xl border border-[#d5dce2] bg-white px-4 py-2.5 shadow-2xs font-semibold">
                 <ShieldCheck size={17} className="text-[#2f7560]" />
-                Bảo vệ xác thực 2 lớp (2FA)
+                Bảo vệ xác thực hai lớp
               </span>
             </div>
 

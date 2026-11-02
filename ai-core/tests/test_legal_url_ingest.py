@@ -139,6 +139,16 @@ class UrlIngestTests(unittest.TestCase):
             metadata = build_document_metadata(text.encode("utf-8"), "web_document.txt", page_title=title)
         self.assertEqual(metadata.doc_title, "Bộ luật Lao động 2019")
 
+    def test_topic_without_official_number_uses_readable_code(self):
+        """Chuyên đề không được nhận số hiệu của luật được trích dẫn."""
+        text = "Chuyên đề 1: Pháp luật kinh tế\nNội dung tham khảo Luật 03/2022/QH15."
+        with patch("legal.url_ingest.auto_extract_metadata", return_value={
+            "doc_title": "Chuyên đề 1: Pháp luật kinh tế", "doc_number": "",
+            "document_type": "law", "issued_date": "2026-01-01",
+        }):
+            metadata = build_document_metadata(text.encode(), "chuyen_de_1.txt")
+        self.assertEqual(metadata.doc_number, "CD-01")
+
     @patch("legal.url_ingest._download_public_html", return_value=b"<html><title>Labor Code</title><article>National Assembly. Article 1. Labor Code.</article></html>")
     @patch("legal.url_ingest.trafilatura.extract", return_value='{"text":"National Assembly. Article 1. Labor Code.","title":"Labor Code"}')
     def test_rejects_english_only_content(self, _extract, _download):

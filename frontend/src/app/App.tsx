@@ -9,7 +9,7 @@ export default function App() {
     <ThemeProvider><AuthProvider>
       <RouterProvider router={router} />
       {/* Giữ thông báo nạp tài liệu hiển thị trên mọi tuyến giao diện. */}
-      <Toaster position="top-right" richColors closeButton expand={false} />
+      <Toaster position="top-right" richColors closeButton expand visibleToasts={4} gap={10} offset={{ top: 68, right: 20 }} mobileOffset={{ top: 64, left: 16, right: 16 }} />
     </AuthProvider></ThemeProvider>
   );
 }
