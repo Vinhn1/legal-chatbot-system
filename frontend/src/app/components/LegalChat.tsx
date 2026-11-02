@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 import axios from "axios";
-import { ArrowUpRight, CheckCircle2, Info, RotateCcw, Send, X } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Info, RotateCcw, RotateCw, Send, X } from "lucide-react";
 import { API_BASE } from "../../config";
 import type { LegalCitation } from "./CitationInspector";
 import { CitationViewer } from "./CitationViewer";
@@ -24,10 +24,10 @@ type ChatMessage = {
   createdAt?: string;
 };
 
-const SUGGESTIONS = [
-  "Điều kiện cấp giấy chứng nhận quyền sử dụng đất là gì?",
-  "Quy định về thời gian thử việc theo Bộ luật Lao động?",
-  "Khoản 2 Điều 1 của văn bản được tra cứu quy định gì?",
+const DEFAULT_SUGGESTIONS = [
+  "Quy định về bảo đảm an toàn cho trẻ em khi ngồi trên ô tô theo Luật Trật tự, an toàn giao thông đường bộ 2024?",
+  "Mức xử phạt và quy định trừ điểm giấy phép lái xe theo Nghị định 168/2024/NĐ-CP?",
+  "Điều kiện tách thửa đất và diện tích tối thiểu theo quy định tại Tây Ninh?",
 ];
 
 /** Lấy thời gian hiển thị hiện tại định dạng HH:mm */
@@ -271,11 +271,34 @@ export function LegalChat({
   const [activeCitation, setActiveCitation] = useState<{ messageId: string; citation: LegalCitation } | null>(null);
   const [avatarState, setAvatarState] = useState<Exclude<RobotState, "thinking">>("idle");
   const [latestBotMessageId, setLatestBotMessageId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS);
+  const [refreshingSuggestions, setRefreshingSuggestions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const startedQuestion = useRef("");
   const busy = useRef(false);
   const stateTimers = useRef<number[]>([]);
+
+  /** Tải danh sách câu hỏi gợi ý được sinh từ các văn bản mới nhất */
+  const loadSuggestions = useCallback(async (forceRefresh = false) => {
+    try {
+      if (forceRefresh) setRefreshingSuggestions(true);
+      const url = forceRefresh ? `${API_BASE}/chat/suggestions?refresh=true` : `${API_BASE}/chat/suggestions`;
+      const res = await axios.get<string[] | { suggestions: string[] }>(url);
+      const items = Array.isArray(res.data) ? res.data : res.data?.suggestions;
+      if (Array.isArray(items) && items.length > 0) {
+        setSuggestions(items);
+      }
+    } catch {
+      // Giữ nguyên câu hỏi hiện tại nếu mạng hoặc backend bận
+    } finally {
+      if (forceRefresh) setRefreshingSuggestions(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSuggestions(false);
+  }, [loadSuggestions]);
 
   /** Xóa các bộ hẹn giờ chuyển trạng thái avatar đang chờ */
   const clearAvatarTimers = useCallback(() => {
@@ -514,7 +537,20 @@ export function LegalChat({
               Đặt câu hỏi bằng tiếng Việt. Câu trả lời sẽ dẫn đến đoạn văn bản được truy xuất để bạn tự đối chiếu.
             </p>
             <div className="mt-5 flex w-full flex-col gap-2 text-left">
-              {SUGGESTIONS.map(suggestion => (
+              <div className="flex items-center justify-between px-1 text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-slate-600 dark:text-slate-300">Gợi ý từ văn bản mới nạp:</span>
+                <button
+                  type="button"
+                  onClick={() => void loadSuggestions(true)}
+                  disabled={refreshingSuggestions}
+                  title="Tạo lại câu hỏi mẫu từ các văn bản mới nhất"
+                  className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium text-[#1d4f88] hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-[#1d4f88] disabled:opacity-50 dark:text-blue-400 dark:hover:bg-slate-800"
+                >
+                  <RotateCw size={11} className={`shrink-0 ${refreshingSuggestions ? "animate-spin" : ""}`} />
+                  <span>{refreshingSuggestions ? "Đang cập nhật..." : "Làm mới gợi ý"}</span>
+                </button>
+              </div>
+              {suggestions.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"

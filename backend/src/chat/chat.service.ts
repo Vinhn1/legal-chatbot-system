@@ -432,7 +432,15 @@ export class ChatService implements OnModuleInit {
     throw new HttpException('Nạp văn bản pháp luật sẽ được triển khai ở T04.', HttpStatus.NOT_IMPLEMENTED);
   }
 
-  getDynamicSuggestions() {
-    return this.getFromAi('/suggestions');
+  /** Lấy danh sách câu hỏi mẫu được tạo động từ các tài liệu pháp luật mới nhất. */
+  async getDynamicSuggestions(refresh = false): Promise<string[]> {
+    try {
+      const res = await this.getFromAi('/suggestions', refresh ? { refresh: 'true' } : {});
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.suggestions)) return res.suggestions;
+      return [];
+    } catch {
+      return [];
+    }
   }
 }

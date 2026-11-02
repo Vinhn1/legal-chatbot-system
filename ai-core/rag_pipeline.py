@@ -282,6 +282,29 @@ class LegalRAG:
         # Giữ client Gemini cùng vòng đời của bộ RAG để kết nối không bị đóng giữa yêu cầu.
         self._genai_client = None
 
+    def get_genai_client(self):
+        """Khởi tạo hoặc trả về client Gemini hiện hành với danh sách khóa API hợp lệ."""
+        if getattr(self, "_genai_client", None) is not None:
+            return self._genai_client
+        if not genai or not genai_types:
+            return None
+        gemini_keys = self.gemini_api_keys if hasattr(self, "gemini_api_keys") and self.gemini_api_keys else []
+        if not gemini_keys:
+            raw_keys = os.getenv("GEMINI_API_KEYS") or os.getenv("GEMINI_API_KEY") or ""
+            gemini_keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
+        if not gemini_keys:
+            return None
+        current_key = gemini_keys[0]
+        client_kwargs = {"api_key": current_key}
+        if hasattr(genai_types, "HttpOptions") and hasattr(genai_types, "HttpRetryOptions"):
+            client_kwargs["http_options"] = genai_types.HttpOptions(
+                timeout=30000,
+                retry_options=genai_types.HttpRetryOptions(attempts=1, http_status_codes=[]),
+            )
+        self._genai_client = genai.Client(**client_kwargs)
+        self._genai_key = current_key
+        return self._genai_client
+
     def update_embedding_keys(self, keys: list[str]) -> bool:
         """Đồng bộ khóa API nhúng vào hàm embedding hiện hành của Chroma collection trong bộ nhớ runtime."""
         valid_keys = [k.strip() for k in keys if isinstance(k, str) and k.strip()]

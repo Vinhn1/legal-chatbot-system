@@ -165,6 +165,28 @@ export function HomePage() {
   const [summary, setSummary] = useState<PublicSummary | null>(null);
   const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
   const [summaryAttempt, setSummaryAttempt] = useState(0);
+  const [sampleQuestions, setSampleQuestions] = useState<string[]>([
+    "Quy định về bảo đảm an toàn cho trẻ em khi ngồi trên ô tô theo Luật Trật tự, an toàn giao thông đường bộ 2024?",
+    "Mức xử phạt và quy định trừ điểm giấy phép lái xe theo Nghị định 168/2024/NĐ-CP?",
+    "Điều kiện tách thửa đất và diện tích tối thiểu tại Tây Ninh?",
+  ]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchDynamicSuggestions() {
+      try {
+        const res = await axios.get<string[] | { suggestions: string[] }>(`${API_BASE}/chat/suggestions`);
+        const items = Array.isArray(res.data) ? res.data : res.data?.suggestions;
+        if (isMounted && Array.isArray(items) && items.length > 0) {
+          setSampleQuestions(items.slice(0, 3));
+        }
+      } catch {
+        // Giữ lại câu hỏi mặc định
+      }
+    }
+    void fetchDynamicSuggestions();
+    return () => { isMounted = false; };
+  }, []);
 
   // Trạng thái của khối tương tác đối chiếu nguồn mẫu
   const [activeCaseIndex, setActiveCaseIndex] = useState(0);
@@ -498,11 +520,7 @@ export function HomePage() {
           {/* Gợi ý câu hỏi phổ biến */}
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-[#6a7b8e]">Câu hỏi gợi ý:</span>
-            {[
-              "Thời gian thử việc tối đa theo Bộ luật Lao động?",
-              "Thủ tục đăng ký thành lập công ty TNHH?",
-              "Quy định bồi thường khi thu hồi đất ở?",
-            ].map((sample) => (
+            {sampleQuestions.map((sample) => (
               <button
                 key={sample}
                 type="button"

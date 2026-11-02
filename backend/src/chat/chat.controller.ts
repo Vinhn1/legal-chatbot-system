@@ -172,8 +172,9 @@ export class ChatController {
     return this.chatService.uploadDocument(file);
   }
 
+  /** Cung cấp danh sách câu hỏi mẫu tra cứu được tạo dựa trên các văn bản mới nhất. */
   @Get('suggestions')
-  getSuggestions() {
-    return this.chatService.getDynamicSuggestions();
+  getSuggestions(@Query('refresh') refresh?: string) {
+    return this.chatService.getDynamicSuggestions(refresh === 'true');
   }
 }

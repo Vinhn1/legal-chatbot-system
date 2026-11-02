@@ -190,8 +190,14 @@ async def verify_citations(request: VerifyCitationsRequest, x_internal_token: st
 
 
 @app.get("/suggestions")
-def get_suggestions():
-    return []
+def get_suggestions(refresh: bool = Query(default=False)):
+    """Trả danh sách câu hỏi mẫu được tạo dựa trên các tài liệu mới nhất được nạp vào."""
+    from legal.sample_questions import get_or_generate_sample_questions
+    return get_or_generate_sample_questions(
+        bot.collection,
+        genai_client=bot.get_genai_client(),
+        force_refresh=refresh,
+    )
 
 
 @app.post('/legal/retrieval/invalidate', dependencies=[Depends(require_internal_token)])
@@ -473,6 +479,12 @@ def delete_document(name: str = Query(...)):
             bot.collection.delete(where={"doc_id": name})
     except Exception:
         raise HTTPException(status_code=503, detail="Chưa xác nhận xóa tài liệu khỏi kho vector.")
+    if rows.get("ids"):
+        try:
+            from legal.sample_questions import get_or_generate_sample_questions
+            get_or_generate_sample_questions(bot.collection, genai_client=bot.get_genai_client(), force_refresh=True)
+        except Exception:
+            pass
     return {"success": True, "deleted": bool(rows.get("ids")), "document_id": name,
             "content_hash": next(iter(hashes)) if len(hashes) == 1 else None}
 
@@ -848,6 +860,12 @@ async def ingest_legal_document(file: UploadFile = File(...), metadata: str = Fo
             raise HTTPException(status_code=429, detail=err_msg) from exc
         logger.exception("Lỗi nghiêm trọng khi nạp văn bản vào AI Core: %s", exc)
         raise HTTPException(status_code=500, detail=f"Lỗi lập chỉ mục văn bản: {type(exc).__name__} - {str(exc)}") from exc
+    if getattr(result, "status", "") in ("indexed", "duplicate"):
+        try:
+            from legal.sample_questions import get_or_generate_sample_questions
+            get_or_generate_sample_questions(bot.collection, genai_client=bot.get_genai_client(), force_refresh=True)
+        except Exception as refresh_exc:
+            logger.warning("Không thể tự động cập nhật câu hỏi mẫu sau khi nạp: %s", refresh_exc)
     return asdict(result)
 
 
@@ -878,6 +896,12 @@ def ingest_url(request: IngestUrlRequest):
         logger.exception("Lỗi không mong muốn khi nạp tài liệu từ URL.",
                          exc_info=(type(safe_error), safe_error, exc.__traceback__))
         raise HTTPException(status_code=502, detail="Không tải được trang nguồn công khai.") from exc
+    if getattr(result, "status", "") in ("indexed", "duplicate"):
+        try:
+            from legal.sample_questions import get_or_generate_sample_questions
+            get_or_generate_sample_questions(bot.collection, genai_client=bot.get_genai_client(), force_refresh=True)
+        except Exception as refresh_exc:
+            logger.warning("Không thể tự động cập nhật câu hỏi mẫu sau khi nạp URL: %s", refresh_exc)
     return asdict(result)
 
 
