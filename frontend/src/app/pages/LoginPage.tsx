@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router";
-import { Lock, Eye, EyeOff, ArrowRight, ChevronLeft, Mail, Shield, KeyRound, ShieldCheck, Scale } from "lucide-react";
+import { Lock, Eye, EyeOff, ArrowRight, ChevronLeft, Mail, Shield, KeyRound, ShieldCheck, FileSearch } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/useTheme";
 import { LegalLogo } from "../components/LegalLogo";
@@ -143,8 +143,8 @@ export function LoginPage() {
             <span>Về trang chủ</span>
           </Link>
           <div className="flex items-center gap-2 text-xs font-semibold text-[#66778c]">
-            <Scale size={16} className="text-[#a17842]" />
-            <span>Veritas Legal · Cổng xác thực an toàn</span>
+            <FileSearch size={16} className="text-[#a17842]" />
+            <span>Veritas DocAI · Cổng xác thực an toàn</span>
           </div>
         </div>
       </header>
@@ -161,7 +161,7 @@ export function LoginPage() {
               Một lối vào rõ ràng cho người vận hành.
             </h1>
             <p className="mt-4 text-base sm:text-lg leading-relaxed text-[#56677c]">
-              Dành riêng cho Quản trị viên và Chuyên viên pháp lý. Hệ thống bảo vệ dữ liệu với phân quyền nghiêm ngặt và cơ chế xác thực hai lớp bảo mật.
+              Dành riêng cho Quản trị viên và Chuyên viên vận hành hệ thống. Hệ thống bảo vệ dữ liệu với phân quyền nghiêm ngặt và cơ chế xác thực hai lớp bảo mật.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3 text-xs sm:text-sm text-[#4d5e72]">
@@ -188,7 +188,7 @@ export function LoginPage() {
                 <LegalLogo size={20} className="text-[#f6efe2]" />
               </div>
               <div>
-                <div className="text-base font-bold text-[#142747]">Veritas Legal</div>
+                <div className="text-base font-bold text-[#142747]">Veritas DocAI</div>
                 <div className="text-xs text-[#718294]">
                   {is2faRequired ? "Bước 2 · Xác thực OTP" : "Không gian đăng nhập quản trị"}
                 </div>
@@ -331,6 +331,24 @@ export function LoginPage() {
                 >
                   {isLoading ? "Đang xác thực..." : "Đăng nhập hệ thống"} {!isLoading && <ArrowRight size={18} />}
                 </button>
+
+                {/* Khu vực truy cập tài khoản dùng thử nhanh */}
+                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 text-center">
+                  <div className="text-xs font-bold text-[#1d4f88]">
+                    Bạn muốn thử nghiệm các tính năng?
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#56677c]">
+                    Sử dụng các tài khoản demo được cấp sẵn để trải nghiệm toàn diện hệ thống.
+                  </p>
+                  <Link
+                    to="/demo-accounts"
+                    className="mt-2.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-[#1d4f88]/30 bg-white text-xs font-bold text-[#1d4f88] hover:bg-blue-50 transition-colors shadow-2xs"
+                  >
+                    <KeyRound size={13} />
+                    <span>Xem danh sách tài khoản thử nghiệm</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
               </form>
             )}
 
@@ -343,7 +361,7 @@ export function LoginPage() {
 
       {/* Footer */}
       <footer className="border-t border-[#ccd4dd] bg-[#faf9f6] py-5 px-5 text-center text-xs text-[#718294]">
-        © 2026 Veritas Legal · Cổng thông tin & tra cứu quy phạm pháp luật
+        © 2026 Veritas DocAI · Hệ thống tra cứu & phân tích văn bản thông minh
       </footer>
     </div>
   );

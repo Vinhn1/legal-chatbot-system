@@ -51,6 +51,13 @@ export class AuthController {
     return await this.authService.verify2FaLogin(username, otpCode, challengeId);
   }
 
+  // Đăng nhập 1-Click dành cho khách truy cập trải nghiệm hệ thống
+  @Post('demo-login')
+  @HttpCode(HttpStatus.OK)
+  async demoLogin(@Body('role') role: string) {
+    return await this.authService.demoLogin(role || 'admin');
+  }
+
   @Post('register')
   @HttpCode(HttpStatus.FORBIDDEN)
   async register() {

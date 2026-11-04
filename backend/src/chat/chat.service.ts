@@ -341,8 +341,10 @@ export class ChatService implements OnModuleInit {
       if (!source || item.doc_number !== source.doc_number ||
           !matchesUnit(item.article, 'Điều', source.article_number) ||
           !matchesUnit(item.clause, 'Khoản', source.clause_number) ||
-          item.source_url !== (source.url ?? '') || !source.content ||
-          !item.snippet.trim() || !source.content.includes(item.snippet.trim())) return [];
+          !source.content || !item.snippet.trim()) return [];
+      const normSource = source.content.replace(/\s+/g, ' ').trim();
+      const normSnippet = item.snippet.replace(/\s+/g, ' ').trim();
+      if (!source.content.includes(item.snippet.trim()) && !normSource.includes(normSnippet)) return [];
       return [{
         chunkId: source.chunk_id, content: source.content, title: source.title || 'Văn bản pháp luật',
         url: source.url ?? '', docNumber: source.doc_number, chapter: source.chapter ?? '',
@@ -352,8 +354,9 @@ export class ChatService implements OnModuleInit {
         warning: source.warning ?? '', verified: true,
       }];
     });
-    // Nếu một căn cứ trong câu trả lời không hợp lệ, không phát hành lập luận có thể dựa vào căn cứ đó.
-    const answer = proposed.length > 0 && citations.length === proposed.length && typeof result?.answer === 'string'
+    // Nếu có căn cứ không được xác minh (nguồn giả), từ chối toàn bộ câu trả lời để bảo đảm tính chuẩn xác pháp lý tuyệt đối
+    const hasFakeCitation = proposed.length > 0 && citations.length !== proposed.length;
+    const answer = !hasFakeCitation && citations.length > 0 && typeof result?.answer === 'string' && result.answer !== REFUSAL
       ? result.answer : REFUSAL;
     if (sessionId) {
       await this.chatHistoryService.saveExchange(sessionId, message, answer, {
@@ -404,6 +407,12 @@ export class ChatService implements OnModuleInit {
   async deleteDocument(name: string) {
     if (!this.jobs) throw new HttpException('Chưa sẵn sàng phục hồi dữ liệu.', HttpStatus.SERVICE_UNAVAILABLE);
     return this.jobs.deleteDocument(name);
+  }
+
+  /** Xóa nhiều tài liệu đồng loạt khỏi kho vector và cơ sở dữ liệu. */
+  async deleteDocuments(names: string[]) {
+    if (!this.jobs) throw new HttpException('Chưa sẵn sàng phục hồi dữ liệu.', HttpStatus.SERVICE_UNAVAILABLE);
+    return this.jobs.deleteDocuments(names);
   }
 
   async ingestFromUrl(url: string) {

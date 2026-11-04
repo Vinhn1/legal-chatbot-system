@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 CACHE_FILE = Path(__file__).resolve().parent.parent / "dynamic_suggestions.json"
 
 DEFAULT_FALLBACK_QUESTIONS = [
-    "Quy định về bảo đảm an toàn cho trẻ em khi ngồi trên ô tô theo Luật Trật tự, an toàn giao thông đường bộ 2024?",
-    "Mức xử phạt và quy định trừ điểm giấy phép lái xe theo Nghị định 168/2024/NĐ-CP?",
-    "Điều kiện tách thửa đất và diện tích tối thiểu theo quy định tại Tây Ninh?",
-    "Thời gian thử việc tối đa theo quy định của Bộ luật Lao động?",
+    "Tóm tắt các quy định và nội dung chính của tài liệu này?",
+    "Điều kiện, quy trình và thời hạn áp dụng được quy định như thế nào?",
+    "Trách nhiệm, quyền hạn và nghĩa vụ của các bên liên quan?",
+    "Các trường hợp ngoại lệ hoặc chế tài xử lý vi phạm quy định?",
 ]
 
 GENERIC_ARTICLE_TITLES = {

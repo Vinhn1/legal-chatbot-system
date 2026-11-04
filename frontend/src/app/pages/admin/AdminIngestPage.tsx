@@ -89,11 +89,24 @@ function normalizeDocumentType(value?: string): DocumentTypeCode {
   return "law";
 }
 
+/** Chuẩn hóa tiêu đề văn bản hiển thị sạch đẹp, tránh dính gạch dưới thô. */
+function cleanItemTitle(raw: string): string {
+  if (!raw) return "";
+  let cleaned = raw.replace(/[_\-]+/g, " ").trim();
+  cleaned = cleaned.replace(/^(?:BC|Bc)\s+/i, "Báo cáo ");
+  cleaned = cleaned.replace(/^(?:QC|Qc)\s+/i, "Quy chế ");
+  cleaned = cleaned.replace(/^(?:QD|Qd)\s+/i, "Quy định ");
+  cleaned = cleaned.replace(/^(?:HD|Hd)\s+/i, "Hướng dẫn ");
+  cleaned = cleaned.replace(/^(?:GT|Gt)\s+/i, "Giáo trình ");
+  cleaned = cleaned.replace(/^(?:ST|St)\s+/i, "Sổ tay ");
+  return cleaned.replace(/\s+/g, " ").trim() || raw;
+}
+
 /** Xây dựng đối tượng metadata rà soát từ kết quả phân tích của một tệp. */
 function buildReviewMetadataFromItem(item: FileItem): ReviewMetadata {
   const res = item.result;
   return {
-    doc_title: res?.doc_title || item.file.name.replace(/\.[^.]+$/, ""),
+    doc_title: cleanItemTitle(res?.doc_title || item.file.name.replace(/\.[^.]+$/, "")),
     doc_number:
       res?.doc_number?.startsWith("CHUA-XAC-DINH-") || res?.doc_number?.startsWith("TL-")
         ? ""
@@ -115,30 +128,24 @@ const statusLabels: Record<string, string> = {
   unknown: "Chưa xác minh",
 };
 
-// Mẫu minh họa thể thức; nội dung điều khoản là chỗ điền, không phải toàn văn có hiệu lực.
-const LEGAL_TEXT_SAMPLE = `CHÍNH PHỦ
-Số: 13/2023/NĐ-CP
+// Mẫu thể thức cấu trúc tài liệu quy chuẩn; nội dung điều khoản là chỗ điền.
+const LEGAL_TEXT_SAMPLE = `CƠ QUAN / ĐƠN VỊ BAN HÀNH
+Số: QC-2024/01
 
-CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-Độc lập - Tự do - Hạnh phúc
-
-Hà Nội, ngày 17 tháng 04 năm 2023
-
-NGHỊ ĐỊNH
-Về bảo vệ dữ liệu cá nhân
+QUY CHẾ QUẢN TRỊ NỘI BỘ
+Về tiêu chuẩn và quy trình vận hành
 
 Chương I
 QUY ĐỊNH CHUNG
 
-Điều 1. Phạm vi điều chỉnh
-1. [Thay bằng nguyên văn khoản 1 đã đối chiếu nguồn chính thức.]
-2. [Thay bằng nguyên văn khoản 2 đã đối chiếu nguồn chính thức.]
+Điều 1. Phạm vi áp dụng
+1. [Thay bằng nguyên văn khoản 1 theo tài liệu đối chiếu chính thức.]
+2. [Thay bằng nguyên văn khoản 2 theo tài liệu đối chiếu chính thức.]
 
-Điều 2. Đối tượng áp dụng
-1. [Thay bằng nguyên văn điều khoản đã đối chiếu nguồn chính thức.]
+Điều 2. Trách nhiệm và quyền hạn
+1. [Thay bằng nguyên văn nội dung trách nhiệm các bên liên quan.]
 
-TM. CHÍNH PHỦ
-THỦ TƯỚNG
+ĐẠI DIỆN ĐƠN VỊ BAN HÀNH
 [Họ tên người ký]`;
 
 /** Chỉ hiển thị lỗi an toàn từ API, không đưa nội dung tài liệu vào thông báo. */
@@ -612,10 +619,10 @@ export function AdminIngestPage() {
       <header className="border-b border-[#d8dee5] pb-5 dark:border-slate-800">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8a785d]">TIẾP NHẬN NGUỒN MỚI</p>
         <h1 className="font-editorial mt-1 text-3xl font-semibold text-[#142747] dark:text-slate-100">
-          Nạp tài liệu pháp luật
+          Nạp tài liệu & văn bản
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#56677c] dark:text-slate-400">
-          Cung cấp tệp, nội dung văn bản hoặc URL. Tệp PDF scan nhiều trang được hỗ trợ quét AI OCR và lập chỉ mục chạy ngầm kèm thông báo tự động khi hoàn tất.
+          Tiếp nhận tệp PDF, DOCX, TXT hoặc URL tài liệu. Tệp PDF scan nhiều trang được hỗ trợ quét AI OCR và lập chỉ mục chạy ngầm kèm thông báo tự động khi hoàn tất.
         </p>
       </header>
 
@@ -1393,7 +1400,7 @@ export function AdminIngestPage() {
                         maxLength={100}
                         value={reviewMetadata.doc_number}
                         onChange={(event) => setReviewMetadata({ ...reviewMetadata, doc_number: event.target.value })}
-                        placeholder="Ví dụ: 168/2024/NĐ-CP"
+                        placeholder="Ví dụ: QC-2024/01 hoặc VB-01/QĐ"
                         className="block h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-[#142747] outline-none focus:border-[#1d4f88] focus:ring-2 focus:ring-[#1d4f88]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       />
                     </label>

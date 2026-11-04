@@ -28,19 +28,47 @@ export class UsersService implements OnModuleInit {
     private readonly otp?: OtpService,
   ) {}
 
-  // Chỉ tạo tài khoản quản trị khi người vận hành cung cấp mật khẩu khởi tạo.
+  // Tạo tài khoản quản trị khởi tạo và các tài khoản thử nghiệm phục vụ trải nghiệm
   async onModuleInit() {
     const password = process.env.ADMIN_SEED_PASSWORD;
-    if (!password) return;
-    const existing = await this.userRepository.findOneBy({ username: 'admin' });
-    if (existing) return;
-    const admin = this.userRepository.create({
-      username: 'admin',
-      password: await bcrypt.hash(password, 10),
-      role: 'admin',
-      name: 'Quản trị viên',
+    if (password) {
+      const existing = await this.userRepository.findOneBy({ username: 'admin' });
+      if (!existing) {
+        const admin = this.userRepository.create({
+          username: 'admin',
+          password: await bcrypt.hash(password, 10),
+          role: 'admin',
+          name: 'Quản trị viên',
+        });
+        await this.userRepository.save(admin);
+      }
+    }
+
+    // Khởi tạo các tài khoản demo thử nghiệm (không bật 2FA để khách dễ dàng trải nghiệm 1-click)
+    const demoConfigs = [
+      { username: 'demo_admin', role: 'admin', name: 'Quản trị viên Demo' },
+      { username: 'demo_staff', role: 'staff', name: 'Biên tập viên Demo' },
+      { username: 'demo_viewer', role: 'staff', name: 'Khách trải nghiệm Demo' },
+    ];
+    for (const demo of demoConfigs) {
+      const found = await this.userRepository.findOneBy({ username: demo.username });
+      if (!found) {
+        await this.createDemoUser(demo.username, demo.role, demo.name);
+      }
+    }
+  }
+
+  /** Tạo nhanh tài khoản demo khi người dùng yêu cầu trải nghiệm trên giao diện */
+  async createDemoUser(username: string, role: string, name: string): Promise<User> {
+    const defaultPassword = 'Demo@Password2026!';
+    const user = this.userRepository.create({
+      username,
+      password: await bcrypt.hash(defaultPassword, 10),
+      role,
+      name,
+      twoFaEnabled: false,
     });
-    await this.userRepository.save(admin);
+    return await this.userRepository.save(user);
   }
 
   // 2. Hàm tìm người dùng theo username (dành cho module Auth kiểm tra)

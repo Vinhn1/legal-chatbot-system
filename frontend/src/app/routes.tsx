@@ -5,6 +5,7 @@ import { HomePage } from "./pages/HomePage";
 import { EmbedChatPage } from "./pages/EmbedChatPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { DemoAccountsPage } from "./pages/DemoAccountsPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 import { AdminOverviewPage } from "./pages/admin/AdminOverviewPage";
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
   { path: "/embed", Component: EmbedChatPage },
   { path: "/widget", Component: EmbedChatPage },
   { path: "/login", Component: LoginPage },
+  { path: "/demo-accounts", Component: DemoAccountsPage },
   { path: "/forgot-password", Component: ForgotPasswordPage },
   {
     path: "/admin",

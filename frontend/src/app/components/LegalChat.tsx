@@ -25,9 +25,9 @@ type ChatMessage = {
 };
 
 const DEFAULT_SUGGESTIONS = [
-  "Quy định về bảo đảm an toàn cho trẻ em khi ngồi trên ô tô theo Luật Trật tự, an toàn giao thông đường bộ 2024?",
-  "Mức xử phạt và quy định trừ điểm giấy phép lái xe theo Nghị định 168/2024/NĐ-CP?",
-  "Điều kiện tách thửa đất và diện tích tối thiểu theo quy định tại Tây Ninh?",
+  "Tóm tắt các quy định và nội dung chính của tài liệu này?",
+  "Điều kiện, quy trình và thời hạn áp dụng được quy định như thế nào?",
+  "Quyền hạn, nghĩa vụ và chế tài xử lý khi có vi phạm quy định?",
 ];
 
 /** Lấy thời gian hiển thị hiện tại định dạng HH:mm */
@@ -437,10 +437,10 @@ export function LegalChat({
             {headerAction}
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-white tracking-tight leading-snug">
-                Trợ lý pháp luật AI
+                Trợ lý tra cứu văn bản AI
               </h2>
               <p className="truncate text-xs text-blue-100/80 leading-tight mt-0.5">
-                Tra cứu nguồn công khai · Đối chiếu Điều, Khoản
+                Tra cứu kho văn bản · Đối chiếu đoạn trích & điều khoản nguồn
               </p>
             </div>
           </div>
@@ -590,7 +590,7 @@ export function LegalChat({
                   <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-[#142747] dark:text-white">
-                        Trợ lý pháp luật AI
+                        Trợ lý tra cứu văn bản AI
                       </span>
                       {message.id === latestBotMessageId && avatarState !== "idle" ? (
                         avatarState === "searching" ? (
@@ -661,10 +661,10 @@ export function LegalChat({
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-[#1d4f88] dark:text-blue-300">
-                  Đang quét và tra cứu văn bản pháp luật...
+                  Đang quét và tra cứu kho văn bản...
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Đang đối chiếu số hiệu Điều, Khoản và ngữ nghĩa văn bản
+                  Đang đối chiếu số hiệu điều khoản và ngữ nghĩa văn bản
                 </span>
               </div>
             </div>
@@ -673,16 +673,16 @@ export function LegalChat({
         {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">{error}</div>}
       </div>
 
-      {/* 4. Khung nhập câu hỏi và dòng cảnh báo pháp lý */}
+      {/* 4. Khung nhập câu hỏi và dòng cảnh báo tham khảo */}
       <form onSubmit={submit} className="shrink-0 border-t border-slate-100 bg-white p-3 sm:p-3.5 dark:border-slate-800 dark:bg-slate-900">
         <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-2 transition-all focus-within:border-[#1d4f88] focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 dark:border-slate-700 dark:bg-slate-800/60 dark:focus-within:bg-slate-900">
           <textarea
             ref={textareaRef}
-            aria-label="Câu hỏi pháp luật"
+            aria-label="Câu hỏi tra cứu văn bản"
             value={question}
             onChange={event => { setQuestion(event.target.value); if (error) setError(""); }}
             onKeyDown={handleKeyDown}
-            placeholder="Nhập câu hỏi pháp luật, ví dụ: điều kiện cấp sổ đỏ, thời gian thử việc..."
+            placeholder="Nhập câu hỏi tra cứu, ví dụ: quy định thử việc, điều kiện nghiệm thu, quy chế tài chính..."
             rows={1}
             className="min-h-[2.5rem] max-h-24 w-full resize-none overflow-y-auto bg-transparent px-2.5 py-1 text-sm leading-5 text-slate-950 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
           />
@@ -700,7 +700,7 @@ export function LegalChat({
         {question.trim().length > 2000 && <p role="alert" className="mt-1 text-xs font-semibold text-rose-700">Câu hỏi không được vượt quá 2000 ký tự.</p>}
         <div className="mt-2 flex items-center justify-center gap-1 text-[10px] text-slate-400">
           <Info size={11} className="shrink-0" />
-          <span>Thông tin tham khảo, không thay thế tư vấn pháp lý chuyên môn.</span>
+          <span>Thông tin tra cứu tham khảo từ kho tài liệu đã nạp. Luôn kiểm tra lại văn bản gốc khi áp dụng nghiệp vụ.</span>
         </div>
       </form>
     </div>

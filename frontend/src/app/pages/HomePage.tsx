@@ -37,48 +37,48 @@ interface PublicSummary {
   documents: { title: string; doc_number: string }[];
 }
 
-/** Danh sách các trường hợp mẫu trong khối tương tác minh họa đối chiếu */
+/** Danh sách các trường hợp mẫu trong khối tương tác minh họa đối chiếu nguồn tài liệu */
 const INTERACTIVE_CASES = [
   {
-    id: "dat-dai",
-    tag: "Luật Đất đai 2024",
-    question: "Điều kiện cấp Giấy chứng nhận quyền sử dụng đất cho hộ gia đình đang sử dụng đất ổn định?",
+    id: "quy-che-noi-bo",
+    tag: "Quy chế nội bộ & Quản trị",
+    question: "Thời hạn và trách nhiệm bàn giao công việc khi chấm dứt hợp đồng được quy định như thế nào?",
     answer:
-      "Theo Điều 138 Luật Đất đai số 31/2024/QH15, hộ gia đình, cá nhân đang sử dụng đất ổn định trước ngày 01 tháng 7 năm 2014 mà không có giấy tờ quy định tại Điều 137, nay được Ủy ban nhân dân cấp xã nơi có đất xác nhận là không có tranh chấp thì được cấp Giấy chứng nhận.",
-    citationTag: "Luật số 31/2024/QH15 · Điều 138",
+      "Căn cứ Điều 12 Quy chế quản trị nội bộ số QC-2024/01, người lao động có trách nhiệm hoàn tất thủ tục bàn giao tài sản và hồ sơ công việc chậm nhất trong vòng 05 ngày làm việc kể từ ngày ban hành quyết định chấm dứt.",
+    citationTag: "Quy chế Quản trị Nội bộ · Điều 12",
     sourceSegment:
-      "Điều 138. Cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất cho hộ gia đình, cá nhân đang sử dụng đất không có giấy tờ về quyền sử dụng đất mà không vi phạm pháp luật về đất đai...",
-    chapter: "Chương IX · Đăng ký đất đai",
-    clause: "Khoản 1 Điều 138",
-    status: "Còn hiệu lực",
+      "Điều 12. Bàn giao công việc và hoàn tất thủ tục: 1. Trong thời hạn không quá 05 ngày làm việc kể từ ngày có quyết định chấm dứt hợp đồng, nhân sự có trách nhiệm hoàn thành toàn bộ biên bản bàn giao thiết bị, tài liệu và tài khoản nghiệp vụ cho bộ phận chức năng...",
+    chapter: "Chương II · Trách nhiệm & Quyền hạn",
+    clause: "Khoản 1 Điều 12",
+    status: "Đang áp dụng",
     statusType: "active" as const,
   },
   {
-    id: "lao-dong",
-    tag: "Bộ luật Lao động 2019",
-    question: "Thời gian thử việc tối đa đối với công việc có chức danh nghề nghiệp cần trình độ đại học?",
+    id: "an-toan-thong-tin",
+    tag: "Chính sách Bảo mật & Dữ liệu",
+    question: "Quy trình xử lý và thời hạn thông báo khi phát hiện sự cố an toàn thông tin?",
     answer:
-      "Căn cứ Điều 25 Bộ luật Lao động số 45/2019/QH14, thời gian thử việc không quá 60 ngày đối với công việc có chức danh nghề nghiệp cần trình độ chuyên môn, kỹ thuật từ cao đẳng trở lên.",
-    citationTag: "Luật số 45/2019/QH14 · Điều 25",
+      "Theo Điều 8 Chính sách An toàn Thông tin số CS-2024/03, mọi sự cố lộ lọt hoặc nghi ngờ xâm nhập trái phép phải được báo cáo ngay cho Tổ ứng cứu sự cố trong vòng 02 giờ kể từ thời điểm phát hiện.",
+    citationTag: "Chính sách An toàn Thông tin · Điều 8",
     sourceSegment:
-      "Điều 25. Thời gian thử việc: Thời gian thử việc do hai bên thỏa thuận căn cứ vào tính chất và mức độ phức tạp của công việc nhưng chỉ được thử việc một lần đối với một công việc và bảo đảm điều kiện... Không quá 60 ngày đối với công việc có chức danh nghề nghiệp cần trình độ chuyên môn, kỹ thuật từ cao đẳng trở lên.",
-    chapter: "Chương III · Hợp đồng lao động",
-    clause: "Khoản 2 Điều 25",
-    status: "Còn hiệu lực",
+      "Điều 8. Tiếp nhận và xử lý sự cố an ninh: 2. Khi phát hiện các dấu hiệu vi phạm bảo mật hoặc rò rỉ dữ liệu, bộ phận phụ trách phải kích hoạt quy trình ứng phó khẩn cấp và gửi thông báo cho Ban điều hành trong vòng 02 giờ...",
+    chapter: "Chương IV · Ứng phó sự cố",
+    clause: "Khoản 2 Điều 8",
+    status: "Đang áp dụng",
     statusType: "active" as const,
   },
   {
-    id: "doanh-nghiep",
-    tag: "Luật Doanh nghiệp 2020",
-    question: "Thời hạn góp vốn thành lập công ty trách nhiệm hữu hạn hai thành viên trở lên?",
+    id: "hop-dong-dich-vu",
+    tag: "Hợp đồng & Cam kết dịch vụ",
+    question: "Quy định về mức phạt vi phạm tiến độ và giới hạn bồi thường thiệt hại trong thỏa thuận dịch vụ?",
     answer:
-      "Theo Khoản 2 Điều 47 Luật Doanh nghiệp số 59/2020/QH14, thành viên phải góp vốn cho công ty đủ và đúng loại tài sản đã cam kết khi đăng ký thành lập doanh nghiệp trong thời hạn 90 ngày kể từ ngày được cấp Giấy chứng nhận đăng ký doanh nghiệp.",
-    citationTag: "Luật số 59/2020/QH14 · Điều 47",
+      "Theo Điều 15 Hợp đồng Khung Cung cấp Dịch vụ, mức phạt vi phạm tiến độ là 0.1% giá trị phần nghĩa vụ bị chậm trễ cho mỗi ngày, nhưng tổng mức phạt không vượt quá 8% tổng giá trị hợp đồng.",
+    citationTag: "Hợp đồng Cung cấp Dịch vụ · Điều 15",
     sourceSegment:
-      "Điều 47. Góp vốn thành lập công ty và cấp giấy chứng nhận phần vốn góp: 2. Thành viên phải góp vốn cho công ty đủ và đúng loại tài sản đã cam kết khi đăng ký thành lập doanh nghiệp trong thời hạn 90 ngày kể từ ngày được cấp Giấy chứng nhận đăng ký doanh nghiệp...",
-    chapter: "Chương III · Công ty TNHH 2 TV",
-    clause: "Khoản 2 Điều 47",
-    status: "Còn hiệu lực",
+      "Điều 15. Chế tài phạt vi phạm và bồi thường: Trường hợp một bên chậm trễ thực hiện nghĩa vụ theo thỏa thuận mà không có lý do bất khả kháng, bên vi phạm phải chịu mức phạt 0.1%/ngày đối với phần chậm trễ, tối đa không quá 8% giá trị thỏa thuận...",
+    chapter: "Chương V · Điều khoản bảo đảm",
+    clause: "Khoản 3 Điều 15",
+    status: "Đang áp dụng",
     statusType: "active" as const,
   },
 ];
@@ -134,7 +134,7 @@ const FAQ_ITEMS = [
   {
     question: "Nếu kho dữ liệu chưa tìm thấy nguồn phù hợp thì hệ thống xử lý ra sao?",
     answer:
-      "Hệ thống sẽ thông báo rõ ràng về giới hạn kho văn bản hiện tại thay vì tự bịa ra điều khoản hoặc trích dẫn không có căn cứ. Nguyên tắc cốt lõi là không ảo giác pháp lý.",
+      "Hệ thống sẽ thông báo rõ ràng về giới hạn kho văn bản hiện tại thay vì tự bịa ra điều khoản hoặc trích dẫn không có căn cứ. Nguyên tắc cốt lõi là không ảo giác thông tin.",
   },
   {
     question: "Trạng thái hiệu lực của văn bản có luôn cập nhật tức thời không?",
@@ -147,9 +147,9 @@ const FAQ_ITEMS = [
       "Bên dưới mỗi câu trả lời là các thẻ nguồn đối chiếu. Khi nhấp vào thẻ, hệ thống hiển thị toàn văn đoạn trích xuất, số Điều, Khoản, ngày ban hành và đường dẫn gốc.",
   },
   {
-    question: "Câu trả lời có thay thế ý kiến tư vấn của luật sư không?",
+    question: "Câu trả lời có thay thế ý kiến tư vấn chuyên môn không?",
     answer:
-      "Không. Hệ thống là công cụ hỗ trợ đọc và tra cứu văn bản quy phạm pháp luật nhanh chóng, không thay thế ý kiến tư vấn pháp lý chính thức cho vụ việc cụ thể.",
+      "Không. Hệ thống là công cụ hỗ trợ đọc, trích xuất và đối chiếu văn bản nhanh chóng, không thay thế ý kiến tư vấn chuyên môn hoặc pháp lý chính thức cho vụ việc cụ thể.",
   },
 ];
 
@@ -166,9 +166,9 @@ export function HomePage() {
   const [summaryState, setSummaryState] = useState<"loading" | "success" | "error">("loading");
   const [summaryAttempt, setSummaryAttempt] = useState(0);
   const [sampleQuestions, setSampleQuestions] = useState<string[]>([
-    "Quy định về bảo đảm an toàn cho trẻ em khi ngồi trên ô tô theo Luật Trật tự, an toàn giao thông đường bộ 2024?",
-    "Mức xử phạt và quy định trừ điểm giấy phép lái xe theo Nghị định 168/2024/NĐ-CP?",
-    "Điều kiện tách thửa đất và diện tích tối thiểu tại Tây Ninh?",
+    "Tóm tắt các quy định và nội dung chính của tài liệu này?",
+    "Điều kiện, quy trình và thời hạn áp dụng được quy định như thế nào?",
+    "Quyền hạn, nghĩa vụ và chế tài xử lý khi có vi phạm quy định?",
   ]);
 
   useEffect(() => {
@@ -282,11 +282,11 @@ export function HomePage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#59708b]">
             <span className="h-0.5 w-6 bg-[#a17842]" />
-            Veritas Legal System · 03 — Sợi chỉ vòng đời nguồn
+            Veritas DocAI System · Sợi chỉ vòng đời nguồn
           </div>
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
             <span className="rounded-full border border-[#d9c9ad] bg-[#faf7f0] px-3 py-1 text-[#785c32]">
-              Cổng tra cứu có đối chiếu
+              Cổng tra cứu văn bản có đối chiếu
             </span>
             <span className="rounded-full border border-[#cbd5df] bg-white px-3 py-1 text-[#516278]">
               Tối ưu Desktop · Tablet · Mobile
@@ -303,21 +303,21 @@ export function HomePage() {
             <ScrollReveal delay={1}>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#dfd4c0] bg-[#f6f0e5] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[#795e37]">
                 <span className="h-2 w-2 rounded-full bg-[#b48b50] animate-pulse" />
-                Cổng tra cứu văn bản pháp luật Việt Nam
+                Hệ thống tra cứu & phân tích văn bản thông minh
               </div>
             </ScrollReveal>
 
             <ScrollReveal delay={2}>
               <h1 className="font-editorial mt-6 text-4xl font-semibold leading-[1.08] tracking-[-0.035em] text-[#112444] sm:text-5xl lg:text-6xl">
-                Tìm quy định.
+                Tìm nội dung.
                 <br />
-                <span className="text-[#1d4f88]">Lần theo nguồn.</span>
+                <span className="text-[#1d4f88]">Lần theo nguồn gốc.</span>
               </h1>
             </ScrollReveal>
 
             <ScrollReveal delay={3}>
               <p className="mt-5 text-base leading-relaxed text-[#516278] sm:text-lg">
-                Đặt câu hỏi tự nhiên bằng tiếng Việt, nhận định được trích xuất gắn liền với nguồn quy phạm pháp luật và tự đối chiếu nguyên văn trước khi áp dụng.
+                Đặt câu hỏi tự nhiên bằng tiếng Việt, nhận định được trích xuất gắn liền với đoạn văn bản nguồn và tự đối chiếu nguyên văn trước khi áp dụng.
               </p>
             </ScrollReveal>
 
@@ -350,9 +350,9 @@ export function HomePage() {
                 </span>
               </div>
 
-              {/* Lưu ý pháp lý */}
+              {/* Lưu ý chuyên môn */}
               <p className="mt-8 border-l-2 border-[#c29a5b] pl-4 text-xs leading-relaxed text-[#738196] sm:text-sm">
-                Công cụ hỗ trợ tra cứu và đối chiếu, không thay thế ý kiến tư vấn pháp lý chính thức. Luôn kiểm tra văn bản gốc và phạm vi áp dụng thực tế.
+                Công cụ hỗ trợ tra cứu và đối chiếu tự động từ kho dữ liệu đã nạp. Luôn kiểm tra văn bản gốc và phạm vi áp dụng thực tế.
               </p>
             </ScrollReveal>
           </div>
@@ -541,7 +541,7 @@ export function HomePage() {
             NGUYÊN TẮC HỆ THỐNG
           </div>
           <h2 className="font-editorial mt-2 text-3xl font-semibold text-[#142747] sm:text-4xl">
-            Đọc luật với nguồn và ngữ cảnh rõ ràng
+            Tra cứu văn bản với nguồn và ngữ cảnh rõ ràng
           </h2>
           <p className="mt-3 text-sm text-[#56677c] sm:text-base">
             Được thiết kế nhằm loại bỏ việc đoán mò văn bản, giữ nguyên sợi chỉ liên kết từ văn bản gốc đến từng câu trả lời.
@@ -681,7 +681,7 @@ export function HomePage() {
 
             {summaryState === "error" && (
               <div className="mt-4 flex items-center justify-between rounded-lg bg-amber-50 p-3 text-xs text-amber-900 animate-case-swap">
-                <span>Không thể tải số liệu thống kê kho luật.</span>
+                <span>Không thể tải số liệu thống kê kho văn bản.</span>
                 <button
                   type="button"
                   onClick={() => setSummaryAttempt((p) => p + 1)}
@@ -755,10 +755,10 @@ export function HomePage() {
       <footer className="border-t border-[#cfd7df] bg-white py-8 px-5 sm:px-8">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left text-xs text-[#738196]">
           <div className="flex items-center gap-2 font-bold text-[#142747]">
-            <Scale size={16} className="text-[#a17842]" />
-            Veritas Legal · Cổng tra cứu văn bản quy phạm pháp luật
+            <FileSearch size={16} className="text-[#a17842]" />
+            Veritas DocAI · Hệ thống tra cứu & phân tích văn bản thông minh
           </div>
-          <div>Hỗ trợ tìm nguồn · Không thay thế tư vấn pháp lý · © 2026 Veritas</div>
+          <div>Hỗ trợ tìm nguồn · Đối chiếu nguyên văn trực tiếp · © 2026 Veritas DocAI</div>
         </div>
       </footer>
     </div>

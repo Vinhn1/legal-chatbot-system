@@ -175,9 +175,12 @@ def build_document_metadata(data: bytes, filename: str, source_url: str = "", pa
     extracted = auto_extract_metadata(data, filename)
     fields = IngestDocumentMetadata.model_fields
     normalized = {key: value for key, value in extracted.items() if key in fields and value is not None}
-    fallback_title = filename.rsplit(".", 1)[0]
+    from legal.metadata_extractor import normalize_fallback_title
+    fallback_title = normalize_fallback_title(filename)
     # Tiêu đề tiếng Việt trên trang nguồn chính xác hơn tiêu đề heuristic bị cắt ngắn.
-    normalized["doc_title"] = page_title or normalized.get("doc_title") or fallback_title
+    raw_title = page_title or normalized.get("doc_title") or fallback_title
+    clean_title = re.sub(r"[_\-]+", " ", raw_title).strip()
+    normalized["doc_title"] = re.sub(r"\s+", " ", clean_title) or raw_title
     normalized["doc_number"] = normalized.get("doc_number") or readable_document_number(
         data.decode("utf-8", errors="ignore"), filename, normalized["doc_title"])
     normalized["issuing_authority"] = normalized.get("issuing_authority") or "Chưa xác định"

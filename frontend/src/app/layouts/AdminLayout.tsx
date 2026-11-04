@@ -84,7 +84,7 @@ export function AdminLayout() {
             </div>
             <div className="flex flex-col justify-center">
               <div className="text-sm font-bold leading-tight tracking-tight text-[#142747]">
-                Veritas <span className="font-medium text-[#56677c]">Legal</span>
+                Veritas <span className="font-medium text-[#56677c]">DocAI</span>
               </div>
               <div className="text-[10px] uppercase leading-tight tracking-[0.16em] text-[#8b795f] font-bold mt-0.5">
                 Cổng quản trị
@@ -161,7 +161,7 @@ export function AdminLayout() {
                   <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#142747] text-white">
                     <LegalLogo size={16} className="text-[#f6efe2]" />
                   </div>
-                  <span className="text-sm font-bold text-[#142747]">Veritas Legal</span>
+                  <span className="text-sm font-bold text-[#142747]">Veritas DocAI</span>
                 </div>
                 <button
                   type="button"

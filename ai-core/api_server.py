@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel, ValidationError
 
 from dotenv import load_dotenv
@@ -321,6 +321,28 @@ def get_documents():
         "circular": "Thông tư",
         "resolution": "Nghị quyết",
     }
+
+    def infer_display_type(doc_title: str, raw_document_type: str) -> str:
+        """Suy luận loại tài liệu hiển thị phù hợp cho cả văn bản pháp luật và văn bản thông thường."""
+        t = doc_title.strip()
+        if re.match(r"^(?:Báo cáo|BC)\b", t, re.IGNORECASE):
+            return "Báo cáo"
+        if re.match(r"^(?:Quy chế|QC)\b", t, re.IGNORECASE):
+            return "Quy chế"
+        if re.match(r"^(?:Quyết định|QĐ)\b", t, re.IGNORECASE):
+            return "Quyết định"
+        if re.match(r"^(?:Hướng dẫn|HD)\b", t, re.IGNORECASE):
+            return "Hướng dẫn"
+        if re.match(r"^(?:Kế hoạch|KH)\b", t, re.IGNORECASE):
+            return "Kế hoạch"
+        if re.match(r"^(?:Chuyên đề|Sổ tay|Giáo trình)\b", t, re.IGNORECASE):
+            return "Chuyên đề"
+        if re.match(r"^(?:Hợp đồng)\b", t, re.IGNORECASE):
+            return "Hợp đồng"
+        if re.match(r"^(?:Chính sách)\b", t, re.IGNORECASE):
+            return "Chính sách"
+        return doc_type_map.get(raw_document_type, raw_document_type)
+
     for chunk_id, meta in sorted(zip(ids, metas), key=chunk_order):
         if not isinstance(meta, dict):
             continue
@@ -333,13 +355,12 @@ def get_documents():
             raw_number = str(meta.get("doc_number") or "")
             display_number = (readable_document_number(title, "document", title)
                               if raw_number.startswith("CHUA-XAC-DINH-") else raw_number)
-            is_topic = bool(re.match(r"^(?:Chuyên đề|Sổ tay|Giáo trình)\b", title, re.IGNORECASE))
             by_doc[doc_key] = {
                 "id": str(meta.get("doc_id") or doc_key),
                 "contentHash": str(meta.get("content_hash") or ""),
                 "docNumber": display_number,
                 "title": title,
-                "docType": "Chuyên đề" if is_topic else doc_type_map.get(raw_type, raw_type),
+                "docType": infer_display_type(title, raw_type),
                 "issuer": meta.get("issuing_authority") or "Cơ quan ban hành",
                 "issuedDate": meta.get("issued_date") or "",
                 "effectiveDate": meta.get("effective_date") or "",
@@ -467,8 +488,17 @@ def get_document_chunks(doc_id: str, limit: int = Query(default=300, ge=1, le=10
     }
 
 
+def _async_refresh_sample_questions():
+    """Làm mới danh sách câu hỏi mẫu chạy nền không chặn luồng phản hồi API xóa."""
+    try:
+        from legal.sample_questions import get_or_generate_sample_questions
+        get_or_generate_sample_questions(bot.collection, genai_client=bot.get_genai_client(), force_refresh=True)
+    except Exception as exc:
+        logger.warning(f"Không thể làm mới câu hỏi mẫu chạy nền: {exc}")
+
+
 @app.delete("/documents", dependencies=[Depends(require_internal_token)])
-def delete_document(name: str = Query(...)):
+def delete_document(name: str = Query(...), background_tasks: BackgroundTasks = None):
     """Xóa theo ID ổn định; không nuốt lỗi hoặc xóa hàng loạt theo tên trùng."""
     if not re.fullmatch(r"[0-9a-fA-F-]{36}", name):
         raise HTTPException(status_code=400, detail="Chỉ xóa bằng ID tài liệu.")
@@ -480,13 +510,43 @@ def delete_document(name: str = Query(...)):
     except Exception:
         raise HTTPException(status_code=503, detail="Chưa xác nhận xóa tài liệu khỏi kho vector.")
     if rows.get("ids"):
-        try:
-            from legal.sample_questions import get_or_generate_sample_questions
-            get_or_generate_sample_questions(bot.collection, genai_client=bot.get_genai_client(), force_refresh=True)
-        except Exception:
-            pass
+        if background_tasks is not None:
+            background_tasks.add_task(_async_refresh_sample_questions)
+        else:
+            threading.Thread(target=_async_refresh_sample_questions, daemon=True).start()
     return {"success": True, "deleted": bool(rows.get("ids")), "document_id": name,
             "content_hash": next(iter(hashes)) if len(hashes) == 1 else None}
+
+
+class BulkDeleteDocumentsRequest(BaseModel):
+    doc_ids: list[str]
+
+
+@app.post("/documents/bulk-delete", dependencies=[Depends(require_internal_token)])
+def bulk_delete_documents(req: BulkDeleteDocumentsRequest, background_tasks: BackgroundTasks = None):
+    """Xóa hàng loạt nhiều tài liệu theo danh sách ID ổn định trong 1 lần gọi."""
+    valid_ids = [doc_id for doc_id in req.doc_ids if re.fullmatch(r"[0-9a-fA-F-]{36}", doc_id)]
+    if not valid_ids:
+        raise HTTPException(status_code=400, detail="Danh sách ID tài liệu cần xóa không hợp lệ.")
+    try:
+        rows = bot.collection.get(where={"doc_id": {"$in": valid_ids}}, include=["metadatas"])
+        hashes = {meta.get("content_hash", "") for meta in rows.get("metadatas") or [] if isinstance(meta, dict)}
+        with corpus_mutation(bot.retriever):
+            bot.collection.delete(where={"doc_id": {"$in": valid_ids}})
+    except Exception as exc:
+        logger.error(f"Lỗi khi xóa hàng loạt tài liệu khỏi kho vector: {exc}")
+        raise HTTPException(status_code=503, detail="Chưa xác nhận xóa danh sách tài liệu khỏi kho vector.")
+    if rows.get("ids"):
+        if background_tasks is not None:
+            background_tasks.add_task(_async_refresh_sample_questions)
+        else:
+            threading.Thread(target=_async_refresh_sample_questions, daemon=True).start()
+    return {
+        "success": True,
+        "deleted_count": len(valid_ids),
+        "deleted_ids": valid_ids,
+        "content_hashes": list(hashes),
+    }
 
 
 

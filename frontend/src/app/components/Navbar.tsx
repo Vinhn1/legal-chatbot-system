@@ -40,10 +40,10 @@ export function Navbar() {
       className="fixed top-0 left-0 right-0 z-50 h-18 border-b border-[#ccd4dd] bg-[#faf9f6]/95 backdrop-blur-md shadow-xs transition-colors"
     >
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-5 sm:px-8">
-        {/* Logo Veritas Legal */}
+        {/* Logo Veritas DocAI */}
         <Link
           to="/"
-          aria-label="Trang chủ Cổng tra cứu pháp luật Veritas"
+          aria-label="Trang chủ Cổng tra cứu văn bản thông minh Veritas DocAI"
           className="group flex shrink-0 items-center gap-3 rounded-xl py-1 focus-visible:outline-2 focus-visible:outline-[#1d4f88]"
         >
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#142747] text-[#f6efe2] shadow-sm transition-transform group-hover:scale-105">
@@ -51,7 +51,7 @@ export function Navbar() {
           </div>
           <div className="flex flex-col justify-center">
             <div className="text-base font-bold leading-tight tracking-tight text-[#142747] sm:text-lg">
-              Veritas <span className="font-medium text-[#56677c]">Legal</span>
+              Veritas <span className="font-medium text-[#56677c]">DocAI</span>
             </div>
             <div className="text-[11px] font-semibold uppercase leading-tight tracking-[0.16em] text-[#8b795f] mt-0.5">
               Tra cứu có đối chiếu
@@ -75,6 +75,12 @@ export function Navbar() {
 
         {/* CTA Buttons */}
         <div className="hidden items-center gap-3 md:flex">
+          <Link
+            to="/demo-accounts"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-blue-200 bg-blue-50/70 px-4 text-xs font-bold text-[#1d4f88] shadow-2xs transition-colors hover:bg-blue-100"
+          >
+            Tài khoản dùng thử
+          </Link>
           <Link
             to="/embed"
             className="inline-flex h-11 items-center justify-center rounded-xl bg-[#1d4f88] px-5 text-sm font-bold text-white shadow-sm transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-[#153b66] active:scale-[0.98] motion-reduce:transition-none"
@@ -127,11 +133,18 @@ export function Navbar() {
               </a>
             ))}
             <Link
+              to="/demo-accounts"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-xs font-bold text-[#1d4f88]"
+            >
+              Tài khoản thử nghiệm 1-Click
+            </Link>
+            <Link
               to="/embed"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between rounded-lg bg-[#eef4f9] px-3 py-2.5 text-sm font-bold text-[#1d4f88]"
             >
-              Không gian tra cứu pháp luật <ArrowUpRight size={16} />
+              Không gian tra cứu văn bản <ArrowUpRight size={16} />
             </Link>
             <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-2">
               <Link

@@ -215,7 +215,7 @@ export function AdminOverviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-[#d8dee5] pb-6">
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#8a785d]">
-            HỆ THỐNG QUẢN TRỊ VERITAS LEGAL
+            HỆ THỐNG QUẢN TRỊ VERITAS DOCAI
           </div>
           <h1 className="font-editorial mt-1 text-3xl sm:text-4xl font-semibold text-[#142747]">
             Tổng quan kho văn bản

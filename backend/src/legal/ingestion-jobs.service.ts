@@ -129,6 +129,51 @@ export class IngestionJobsService {
     });
   }
 
+  /** Xóa nhiều tài liệu đồng loạt khỏi kho vector và cơ sở dữ liệu PostgreSQL. */
+  async deleteDocuments(targets: string[]) {
+    if (!Array.isArray(targets) || targets.length === 0) {
+      throw new BadRequestException('Danh sách mã tài liệu cần xóa không được rỗng.');
+    }
+    const validTargets = targets.filter((id) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+    );
+    if (validTargets.length === 0) {
+      throw new BadRequestException('Không tìm thấy ID tài liệu hợp lệ để xóa.');
+    }
+
+    const token = this.config?.get<string>('AI_CORE_INTERNAL_TOKEN');
+    if (!token || !this.http) throw new Error('Thiếu xác thực nội bộ.');
+    const base = this.config!.get<string>('AI_SERVICE_BASE_URL', 'http://localhost:8001');
+
+    // 1. Gọi bulk-delete sang AI Core ChromaDB
+    const aiResponse = await firstValueFrom(
+      this.http.post(
+        base + '/documents/bulk-delete',
+        { doc_ids: validTargets },
+        { headers: { 'X-Internal-Token': token }, timeout: 60000 },
+      ),
+    );
+    if (!aiResponse.data?.success) {
+      throw new Error('Chưa xác nhận xóa danh sách vector từ AI Core.');
+    }
+
+    // 2. Xóa các bản ghi tương ứng trong PostgreSQL
+    return this.db.transaction(async (manager) => {
+      const repository = manager.getRepository(LegalDocument);
+      for (const targetId of validTargets) {
+        const doc = await repository.findOneBy({ id: targetId });
+        if (doc) {
+          await repository.remove(doc);
+        }
+      }
+      return {
+        success: true,
+        deleted_count: validTargets.length,
+        deleted_ids: validTargets,
+      };
+    });
+  }
+
   /** Chỉ trả trạng thái, không đưa payload văn bản ra danh sách công việc. */
   list() {
     return this.db.query('SELECT id,operation,status,document_id,error_code,created_at,updated_at FROM ingestion_jobs ORDER BY created_at DESC LIMIT 100');

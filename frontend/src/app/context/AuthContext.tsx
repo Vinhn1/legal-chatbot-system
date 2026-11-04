@@ -19,6 +19,7 @@ type AuthContextType = {
   user: AuthUser | null;
   token: string | null;
   login: (identifier: string, password: string) => Promise<LoginResult>;
+  demoLogin: (role: "admin" | "staff" | "viewer") => Promise<AuthRole | "error">;
   verify2faLogin: (username: string, otpCode: string) => Promise<AuthRole | "error">;
   logout: () => void;
   updateUser: (patch: Partial<AuthUser>) => void;
@@ -28,6 +29,7 @@ const TOKEN_KEY = "legal_admin_token";
 const USER_KEY = "legal_admin_user";
 const AuthContext = createContext<AuthContextType>({
   user: null, token: null, login: async () => "error",
+  demoLogin: async () => "error",
   verify2faLogin: async () => "error", logout: () => {}, updateUser: () => {},
 });
 
@@ -247,6 +249,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function demoLogin(role: "admin" | "staff" | "viewer"): Promise<AuthRole | "error"> {
+    await logout();
+    loginChallenge.current = null;
+    try {
+      const response = await axios.post(`${API_BASE}/auth/demo-login`, { role });
+      return acceptLogin(response.data);
+    } catch {
+      return "error";
+    }
+  }
+
   async function verify2faLogin(username: string, otpCode: string): Promise<AuthRole | "error"> {
     try {
       const response = await axios.post(`${API_BASE}/auth/verify-2fa`, { username, otpCode, challengeId: loginChallenge.current });
@@ -263,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  return <AuthContext.Provider value={{ user, token, login, verify2faLogin, logout, updateUser }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, token, login, demoLogin, verify2faLogin, logout, updateUser }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);

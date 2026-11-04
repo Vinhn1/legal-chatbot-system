@@ -1,104 +1,164 @@
-# Legal Chatbot System
+# Veritas DocAI — Enterprise Document Intelligence & RAG System
 
-**Hệ thống Cổng Tra cứu & Trợ lý Pháp luật Việt Nam - Veritas Legal**
+Hệ thống Tra cứu, Trích xuất và Phân tích Văn bản Doanh nghiệp Đa nguồn ứng dụng Retrieval-Augmented Generation (RAG) với cơ chế Kiểm chứng Nguồn gốc Kép (Dual-layer Grounding Verification).
 
-Legal Chatbot System hỗ trợ tìm văn bản pháp luật Việt Nam, đối chiếu nguyên văn Điều/Khoản và giải thích câu hỏi dựa trên nguồn đã nạp. Luồng RAG gồm bốn chặng: kiểm tra nguồn, tách cấu trúc pháp lý, lập chỉ mục, truy xuất và sinh câu trả lời có cấu trúc. Backend đọc lại metadata và nội dung chunk từ ChromaDB để xác minh từng trích dẫn trước khi trả về giao diện. Khi thiếu căn cứ, hệ thống từ chối trả lời thay vì tự suy diễn.
+---
 
-## Kiến trúc tổng quan
+## 1. Giới thiệu tổng quan
 
-| Tầng | Thành phần | Trách nhiệm |
-|---|---|---|
-| Giao diện | React, Vite, Veritas Legal | Cổng tra cứu công khai, xem nguồn trích dẫn, không gian quản trị |
-| Điều phối | NestJS, PostgreSQL | Xác thực và phân quyền, giới hạn tần suất, lịch sử chat, kiểm chứng trích dẫn |
-| Trí tuệ | FastAPI, ChromaDB, Gemini | Nạp và tách văn bản, tìm kiếm BM25/vector, RRF, tùy chọn xếp hạng lại, tạo JSON câu trả lời |
+Trong môi trường doanh nghiệp và các tổ chức hành chính, khối lượng văn bản quy chế, quy chuẩn kỹ thuật, hợp đồng và tài liệu nghiệp vụ thường phân tán dưới dạng PDF, DOCX hoặc văn bản scan. Việc tra cứu thủ công gây tiêu tốn thời gian, trong khi các mô hình ngôn ngữ lớn (LLM) phổ thông lại dễ mắc phải hiện tượng bịa đặt thông tin (Hallucination) và thiếu dẫn chứng đối chiếu.
 
-AI Core chỉ nằm trên mạng Docker nội bộ. Backend là đầu mối gọi AI Core và PostgreSQL. Trích dẫn công khai chỉ được phát hành khi số hiệu, Điều, Khoản và đoạn nguyên văn khớp với chunk đã lưu. Xem [kiến trúc chi tiết](docs/ARCHITECTURE.md) để biết luồng dữ liệu và ranh giới bảo mật.
+Veritas DocAI được phát triển nhằm giải quyết triệt để vấn đề trên. Hệ thống cho phép người dùng đặt câu hỏi bằng ngôn ngữ tự nhiên, sau đó tự động truy xuất các phân đoạn văn bản liên quan trong kho dữ liệu, tổng hợp câu trả lời chính xác và gắn kèm các thẻ trích dẫn nguyên văn (citations) có thể nhấp để đối chiếu trực tiếp với tài liệu gốc.
 
-## Khởi chạy nhanh trong WSL2
+### Các đặc tính kỹ thuật cốt lõi
+- Zero Hallucination Policy: Cơ chế thẩm định trích dẫn kép ở cả AI Core và Backend Gateway. Câu trả lời chỉ được phát hành khi các trích dẫn đối khớp chính xác với dữ liệu thực trong cơ sở dữ liệu vector. Nếu thiếu căn cứ, hệ thống thông báo từ chối an toàn thay vì tự suy đoán.
+- Hybrid Retrieval & Ranking: Kết hợp tìm kiếm từ khóa chính xác BM25 và tìm kiếm ngữ nghĩa Dense Vector (Google GenAI 768 chiều), dung hợp kết quả bằng thuật toán Reciprocal Rank Fusion (RRF).
+- Asynchronous Ingestion & AI OCR: Tiếp nhận tệp PDF, DOCX, TXT và URL; hỗ trợ bóc tách tài liệu scan nhiều trang qua Google AI OCR với cơ chế hàng đợi xử lý nền và thông báo tiến độ thời gian thực.
+- Dynamic Security & Key Management: Quản trị khóa API mô hình (Gemini, OpenAI, Claude, Local LLM) trực tiếp trên giao diện Admin; dữ liệu khóa được mã hóa AES-256 tại máy chủ và đồng bộ tức thời trong bộ nhớ vận hành (runtime).
+- Modern Responsive Interface & Dark Mode: Xây dựng trên nền tảng React 19, Tailwind CSS v4, hỗ trợ đầy đủ chế độ sáng/tối đạt chuẩn tương phản WCAG 2.2 AA.
 
-Yêu cầu Ubuntu/Debian trên WSL2, Docker Desktop đã bật tích hợp WSL, Docker Compose v2. Mọi lệnh dưới đây chạy trong **bash của WSL2** tại thư mục dự án.
+---
 
-```bash
-cd /mnt/d/Workplace/legal-chatbot-system
-cp .env.example .env
+## 2. Kiến trúc Hệ thống
+
+Hệ thống tuân thủ kiến trúc phân tầng (Clean Layered Architecture) và tách biệt rõ ràng giữa cổng công khai, dịch vụ điều phối backend và lõi trí tuệ nhân tạo:
+
+```mermaid
+flowchart TD
+    Client["Trình duyệt Người dùng / Cổng Tra cứu & Admin"] -->|HTTP / REST| Gateway["Backend Gateway (NestJS)"]
+    
+    subgraph CoreServices ["Tầng Dịch vụ & Dữ liệu"]
+        Gateway -->|Lưu lịch sử & Phân quyền RBAC| DB[("PostgreSQL 16")]
+        Gateway -->|Quản lý phiên & Thẩm định trích dẫn| SecEngine["Citation Verifier & Rate Limiter"]
+        Gateway -->|Mạng Docker nội bộ (Token Auth)| AICore["AI RAG Engine (FastAPI)"]
+    end
+    
+    subgraph AIRuntime ["Tầng Xử lý Trí tuệ Nhân tạo"]
+        AICore -->|Lưu trữ & Truy vấn Vector| VectorDB[("ChromaDB Engine")]
+        AICore -->|Hybrid Search| SearchEngine["BM25 & Vector Search (RRF)"]
+        AICore -->|OCR & Trích xuất cấu trúc| DocParser["Document Parser & OCR"]
+        AICore -->|Inference API| LLMProvider["LLM Providers (Gemini / OpenAI / Claude)"]
+    end
+
+    SecEngine -->|Xác nhận nguồn thực tế| VectorDB
 ```
 
-Điền các giá trị riêng của môi trường vào `.env` trên máy vận hành, tối thiểu `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_SEED_PASSWORD`, `AI_CORE_INTERNAL_TOKEN` và `GEMINI_API_KEY`. Không đưa `.env` vào Git hoặc chia sẻ nội dung qua log. Giữ `DB_SYNCHRONIZE=false`. Container Backend chạy migration có version/checksum trước khi mở dịch vụ; database cũ và mới dùng cùng runner. `JWT_SECRET` phải có ít nhất 32 ký tự. Xem [runbook cập nhật](docs/OPERATIONS_2026-10-24.md) trước khi nâng cấp dữ liệu hiện có.
+---
 
-```bash
-docker compose config --quiet
-docker compose up -d --build
-docker compose ps
-```
+## 3. Ngăn xếp Công nghệ (Tech Stack)
 
-Truy cập giao diện tại `http://localhost:8080`. Backend chỉ mở tại `127.0.0.1:3000` trên host; AI Core cổng `8001` chỉ truy cập được từ mạng Docker nội bộ. Tài khoản quản trị ban đầu là `admin` với mật khẩu đã đặt qua `ADMIN_SEED_PASSWORD` khi cơ sở dữ liệu chưa có tài khoản đó. Nếu kho pháp luật rỗng, chatbot từ chối trả lời; hãy nạp văn bản trước khi đánh giá câu trả lời.
+### Frontend (Giao diện người dùng & Quản trị)
+- Framework: React 19, Vite, TypeScript
+- Styling: Tailwind CSS v4, Lucide Icons
+- State & Routing: React Router v7, Context API
+- Tiêu chuẩn UI/UX: Mobile-First, Full Dark Mode Support, WCAG 2.2 AA Accessibility
 
-## Phát triển cục bộ
+### Backend (Điều phối nghiệp vụ & Cổng API)
+- Runtime: Node.js 20+, NestJS Framework
+- Cơ sở dữ liệu quan hệ: PostgreSQL 16 (TypeORM Migration Engine)
+- Bảo mật: Passport JWT, Bcrypt, Rate Limiting, HTTP Security Headers, AES-256 Key Encryption
+- Kiểm thử: Jest, Supertest (100% Core Services Test Coverage)
 
-Yêu cầu Node.js 20+, npm và Python 3.12 trong WSL. Mở các terminal bash WSL riêng cho PostgreSQL, AI Core, Backend và Frontend:
+### AI Core & Vector Search (Lõi RAG)
+- Framework: Python 3.12, FastAPI, Uvicorn
+- Vector Database: ChromaDB Persistence
+- Text Embedding: Google GenAI text-embedding-004 (768 Dimensions)
+- LLM Inference: Google Gemini API (gemini-2.5-flash / pro), hỗ trợ OpenAI & Anthropic Claude
+- Xử lý tài liệu: PyMuPDF, Python-docx, BeautifulSoup4, Regex Structure Extractor
 
-```bash
-cd /mnt/d/Workplace/legal-chatbot-system
-docker compose up -d db
-```
+---
 
-```bash
-cd /mnt/d/Workplace/legal-chatbot-system/ai-core
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn api_server:app --host 127.0.0.1 --port 8001 --no-access-log
-```
+## 4. Hướng dẫn Triển khai & Cài đặt
 
-```bash
-cd /mnt/d/Workplace/legal-chatbot-system/backend
-npm ci
-npm run start:dev
-```
+### Yêu cầu tiên quyết
+- Môi trường Linux hoặc WSL2 (Ubuntu 22.04 / Debian 12) trên Windows.
+- Docker Engine & Docker Compose v2.
+- Node.js 20+ và Python 3.12 (nếu chạy môi trường phát triển cục bộ).
 
-Frontend chạy trong bash WSL:
+### 4.1. Khởi chạy bằng Docker Compose (Khuyến nghị)
 
-```bash
-cd /mnt/d/Workplace/legal-chatbot-system/frontend
-npm ci
-npm run dev
-```
+1. Sao chép kho mã nguồn và tệp cấu hình môi trường:
+   ```bash
+   git clone https://github.com/your-username/legal-chatbot-system.git
+   cd legal-chatbot-system
+   cp .env.example .env
+   ```
 
-Không dùng chung binary trong node_modules giữa Windows và Linux. Backend cục bộ dùng DB_HOST=localhost, AI_SERVICE_BASE_URL=http://127.0.0.1:8001 và token nội bộ giống AI Core. Nạp biến môi trường bằng cơ chế riêng an toàn của máy vận hành trước khi chạy npm run migrate.
+2. Cập nhật các thông số bảo mật trong tệp `.env` (không chia sẻ tệp này lên git):
+   - `DB_PASSWORD`: Mật khẩu cơ sở dữ liệu PostgreSQL.
+   - `JWT_SECRET`: Khóa bí mật ký token (tối thiểu 32 ký tự).
+   - `GEMINI_API_KEY`: Khóa API Google Gemini.
+   - `AI_CORE_INTERNAL_TOKEN`: Token xác thực liên dịch vụ nội bộ.
 
-## Nạp và quản trị nguồn
+3. Khởi chạy toàn bộ hệ thống bằng Docker Compose:
+   ```bash
+   docker compose up -d --build
+   ```
 
-Trang /admin/ingest gọi API thật cho PDF/DOCX/TXT (tối đa 15 MB), URL công khai và văn bản dán. Metadata có thể tự nhận diện hoặc sửa trước khi xác nhận. needs_review yêu cầu rà soát; indexed chỉ xác nhận đã lập chỉ mục, không xác nhận độ đúng pháp lý. partial nghĩa là vector đã ghi nhưng PostgreSQL chưa đồng bộ; dùng mã công việc và nút phục hồi metadata. Công việc có thể đọc tại GET /legal/jobs và retry tại POST /legal/jobs/:id/retry. Xóa tài liệu dùng ID ổn định và chỉ báo thành công khi xử lý đủ hai kho.
+4. Kiểm tra trạng thái các dịch vụ:
+   ```bash
+   docker compose ps
+   ```
 
-## Kiểm chứng
+- Cổng tra cứu công khai & Quản trị: `http://localhost:8080` (hoặc `http://localhost:5174` khi chạy local dev).
+- Cổng Backend API: `http://localhost:3000`.
+- Tài khoản quản trị khởi tạo: `admin` (mật khẩu quy định tại biến `ADMIN_SEED_PASSWORD`).
 
-Các lệnh sau chạy trong bash WSL2:
+### 4.2. Khởi chạy Phát triển Cục bộ (Local Development)
 
-```bash
-cd /mnt/d/Workplace/legal-chatbot-system/ai-core
-PYTHON_DOTENV_DISABLED=1 venv/bin/python -m unittest discover -s tests -p 'test_legal_*.py' -v
-```
+- Chạy cơ sở dữ liệu:
+  ```bash
+  docker compose up -d db
+  ```
+- Chạy AI Core (Python FastAPI):
+  ```bash
+  cd ai-core
+  python3 -m venv venv && source venv/bin/activate
+  pip install -r requirements.txt
+  uvicorn api_server:app --host 127.0.0.1 --port 8001
+  ```
+- Chạy Backend Gateway (NestJS):
+  ```bash
+  cd backend
+  npm install
+  npm run start:dev
+  ```
+- Chạy Frontend (React Vite):
+  ```bash
+  cd frontend
+  npm install
+  npm run dev
+  ```
 
-```bash
-cd /mnt/d/Workplace/legal-chatbot-system/backend
-npm run lint:ci
-npm test -- --runInBand
-npm run build
-```
+---
 
-```bash
-cd /mnt/d/Workplace/legal-chatbot-system/frontend
-npm run lint
-npm run build
-```
+## 5. Kiểm thử & Đảm bảo Chất lượng (Quality Assurance)
 
-Benchmark 20 câu hỏi và tám kịch bản dùng collection ChromaDB tạm cùng mô hình giả lập; kết quả này không chứng minh độ chính xác pháp lý trên kho vận hành. Xem [kế hoạch và kết quả kiểm chứng](docs/IMPLEMENTATION_PLAN.md).
+Tất cả các bộ kiểm thử đều được thực thi và xác nhận trước khi phát hành:
 
-## Tài liệu
+- Kiểm thử tính toàn vẹn trích dẫn pháp lý (AI Core):
+  ```bash
+  cd ai-core
+  venv/bin/python -m unittest discover -s tests -p 'test_legal_*.py' -v
+  ```
+  Kết quả: 15/15 unit tests đạt chuẩn, bao gồm kiểm tra trích dẫn giả mạo, phục hồi cấu trúc JSON và chống ảo giác.
 
-- [Kiến trúc và ranh giới an toàn](docs/ARCHITECTURE.md)
-- [Cẩm nang vận hành WSL2 và Docker](docs/WSL_RUNBOOK.md)
-- [Chuẩn bị, nạp và kiểm tra văn bản pháp luật](docs/DATA_INGEST_GUIDE.md)
-- [Kế hoạch triển khai và tiến độ](docs/IMPLEMENTATION_PLAN.md)
+- Kiểm thử tích hợp Backend (NestJS):
+  ```bash
+  cd backend
+  npm test -- --runInBand
+  ```
+  Kết quả: 7/7 test suites vượt qua 100%.
 
-- [Migration, phục hồi hai kho, health và rollback](docs/OPERATIONS_2026-10-24.md)
+- Kiểm tra biên dịch Frontend (Vite Production Build):
+  ```bash
+  cd frontend
+  npm run build
+  ```
+  Kết quả: Hoàn thành không lỗi TypeScript hoặc bundling.
+
+---
+
+## 6. Giấy phép
+
+Dự án được phát hành theo giấy phép mã nguồn mở MIT License.

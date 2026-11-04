@@ -88,14 +88,18 @@ function getSourceKind(doc: LegalDocumentItem): SourceKind {
   return "unknown";
 }
 
-/** Tùy chọn lọc loại văn bản quy phạm pháp luật */
+/** Tùy chọn lọc loại văn bản quy phạm pháp luật và tài liệu */
 const typeFilterOptions: FilterOption[] = [
   { value: "all", label: "Tất cả loại văn bản" },
   { value: "Luật", label: "Luật" },
+  { value: "Báo cáo", label: "Báo cáo" },
+  { value: "Quy chế", label: "Quy chế" },
   { value: "Chuyên đề", label: "Chuyên đề" },
   { value: "Nghị định", label: "Nghị định" },
   { value: "Thông tư", label: "Thông tư" },
   { value: "Nghị quyết", label: "Nghị quyết" },
+  { value: "Quyết định", label: "Quyết định" },
+  { value: "Hướng dẫn", label: "Hướng dẫn" },
 ];
 
 /** Tùy chọn lọc tình trạng hiệu lực pháp lý */
@@ -116,11 +120,33 @@ const sourceFilterOptions: FilterOption[] = [
   { value: "txt", label: "Văn bản TXT", icon: FileText, iconColor: "text-slate-600" },
 ];
 
+/** Làm sạch tiêu đề hiển thị, chuyển đổi gạch dưới xộc xệch và viết tắt thô thành văn bản chuẩn. */
+function formatCleanTitle(rawTitle: string): string {
+  if (!rawTitle) return "Văn bản chưa đặt tên";
+  let cleaned = rawTitle.replace(/[_\-]+/g, " ").trim();
+  cleaned = cleaned.replace(/^(?:BC|Bc)\s+/i, "Báo cáo ");
+  cleaned = cleaned.replace(/^(?:QC|Qc)\s+/i, "Quy chế ");
+  cleaned = cleaned.replace(/^(?:QD|Qd)\s+/i, "Quy định ");
+  cleaned = cleaned.replace(/^(?:HD|Hd)\s+/i, "Hướng dẫn ");
+  cleaned = cleaned.replace(/^(?:GT|Gt)\s+/i, "Giáo trình ");
+  cleaned = cleaned.replace(/^(?:ST|St)\s+/i, "Sổ tay ");
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+  return cleaned || rawTitle;
+}
+
 /** Giữ mã hiển thị dễ đọc cho các bản ghi được nạp trước khi đổi quy tắc số hiệu. */
 function readableNumber(number: string, title: string): string {
-  if (!number.startsWith("CHUA-XAC-DINH-")) return number || "Chưa có số hiệu";
-  const topic = title.match(/^Chuyên đề\s+(\d+)/i);
-  return topic ? `CD-${topic[1].padStart(2, "0")}` : "Chưa có số hiệu";
+  if (!number || number.startsWith("CHUA-XAC-DINH-")) {
+    const topic = title.match(/^Chuyên đề\s+(\d+)/i);
+    return topic ? `CD-${topic[1].padStart(2, "0")}` : "Chưa có số hiệu";
+  }
+  if (number.startsWith("TL-BC-TH-C-T-P") || number.startsWith("TL-BC-TH")) {
+    return "BC-THUC-TAP";
+  }
+  if (number.startsWith("TL-BC-")) {
+    return number.replace(/^TL-BC-/, "BC-");
+  }
+  return number.replace(/-{2,}/g, "-");
 }
 
 /** Định nghĩa đoạn văn bản hoặc Điều/Khoản thực tế đã lập chỉ mục trong kho vector */
@@ -179,6 +205,7 @@ function formatChunkHeading(chunk: IndexedDocumentChunk): string {
  */
 export function AdminDocumentsPage() {
   const [documents, setDocuments] = useState<LegalDocumentItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -225,8 +252,8 @@ export function AdminDocumentsPage() {
           id: item.id || `doc-${index}`,
           name: item.name || item.title || "Văn bản pháp luật",
           docNumber: readableNumber(item.docNumber || item.doc_number || "", item.title || item.name || ""),
-          title: item.title || item.name || "Văn bản pháp luật",
-          docType: item.docType || "Luật",
+          title: formatCleanTitle(item.title || item.name || "Văn bản pháp luật"),
+          docType: item.docType || "Tài liệu",
           issuer: item.issuer || item.issuing_authority || "Cơ quan ban hành",
           issuedDate: item.issuedDate || item.issued_date || "Chưa rõ",
           effectiveDate: item.effectiveDate || item.effective_date,
@@ -264,12 +291,35 @@ export function AdminDocumentsPage() {
     return () => window.clearTimeout(timer);
   }, [fetchDocuments]);
 
-  // Xóa tài liệu khỏi kho vector
+  // Chọn hoặc bỏ chọn một tài liệu
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Chọn hoặc bỏ chọn tất cả tài liệu hiển thị
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === filteredDocs.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredDocs.map((doc) => doc.id));
+    }
+  };
+
+  // Xóa tài liệu khỏi kho vector cập nhật ngay lập tức (Optimistic Update)
   const handleDeleteDocument = async (doc: LegalDocumentItem) => {
-    // ID ổn định tránh xóa nhầm hai văn bản trùng tiêu đề.
     const docName = doc.id;
     if (!window.confirm(`Bạn có chắc chắn muốn xóa văn bản "${doc.title}" khỏi hệ thống tra cứu?`)) {
       return;
+    }
+    const backupDocs = [...documents];
+    // Xóa lạc quan ngay lập tức khỏi state để UI phản hồi tức thì
+    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+    setSelectedIds((prev) => prev.filter((id) => id !== doc.id));
+    if (selectedDoc?.id === doc.id) {
+      setIsDetailOpen(false);
+      setSelectedDoc(null);
     }
     setIsDeleting(true);
     try {
@@ -277,15 +327,49 @@ export function AdminDocumentsPage() {
         params: { name: docName },
       });
       if (!response.data.success) {
+        setDocuments(backupDocs);
         alert(`Xóa chưa hoàn tất. Mã phục hồi: ${response.data.job_id || "chưa có"}`);
         return;
       }
-      if (selectedDoc?.id === doc.id) {
-        setIsDetailOpen(false);
-      }
-      await fetchDocuments();
     } catch {
+      setDocuments(backupDocs);
       alert("Xảy ra lỗi khi xóa tài liệu khỏi hệ thống.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Xóa nhiều tài liệu đồng loạt
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (
+      !window.confirm(
+        `Bạn có chắc chắn muốn xóa ${selectedIds.length} văn bản đã chọn khỏi hệ thống tra cứu? Hành động này không thể hoàn tác.`
+      )
+    ) {
+      return;
+    }
+    const backupDocs = [...documents];
+    const targetIds = [...selectedIds];
+    // Xóa lạc quan ngay lập tức khỏi giao diện
+    setDocuments((prev) => prev.filter((d) => !targetIds.includes(d.id)));
+    setSelectedIds([]);
+    if (selectedDoc && targetIds.includes(selectedDoc.id)) {
+      setIsDetailOpen(false);
+      setSelectedDoc(null);
+    }
+    setIsDeleting(true);
+    try {
+      const response = await axios.post(`${API_BASE}/chat/documents/bulk-delete`, {
+        ids: targetIds,
+      });
+      if (!response.data.success) {
+        setDocuments(backupDocs);
+        alert("Xóa hàng loạt chưa hoàn tất.");
+      }
+    } catch {
+      setDocuments(backupDocs);
+      alert("Xảy ra lỗi khi xóa danh sách tài liệu.");
     } finally {
       setIsDeleting(false);
     }
@@ -376,13 +460,13 @@ export function AdminDocumentsPage() {
       <div className="flex flex-col gap-4 border-b border-[#d8dee5] pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.18em] text-[#8a785d]">
-            KHO QUY PHẠM PHÁP LUẬT
+            KHO DỮ LIỆU VĂN BẢN
           </div>
           <h1 className="font-editorial mt-1 text-3xl font-semibold text-[#142747]">
             Tài liệu & Cấu trúc nguồn
           </h1>
           <p className="mt-1 text-sm text-[#56677c]">
-            Tìm kiếm, phân loại hiệu lực và rà soát cấu trúc Điều/Khoản thực tế đã bóc tách từ ChromaDB.
+            Tìm kiếm, quản lý phân loại và rà soát cấu trúc phân đoạn (chunks) thực tế đã bóc tách từ ChromaDB.
           </p>
         </div>
 
@@ -533,6 +617,15 @@ export function AdminDocumentsPage() {
             <table className="w-full min-w-[880px] text-left text-xs sm:text-sm">
               <thead className="border-b border-[#e2e7ec] dark:border-zinc-800 bg-[#f8f9fa] dark:bg-[#161618] text-xs font-bold uppercase tracking-wider text-[#6a7b8e] dark:text-zinc-400">
                 <tr>
+                  <th className="w-12 py-3.5 px-4 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Chọn tất cả văn bản"
+                      checked={filteredDocs.length > 0 && selectedIds.length === filteredDocs.length}
+                      onChange={handleToggleSelectAll}
+                      className="size-4 rounded border-[#cbd5df] dark:border-zinc-700 text-[#1d4f88] focus:ring-[#1d4f88] cursor-pointer"
+                    />
+                  </th>
                   <th className="min-w-[320px] py-3.5 px-5">Tài liệu & Trích yếu</th>
                   <th className="py-3.5 px-4">Hình thức nạp</th>
                   <th className="py-3.5 px-4">Hiệu lực</th>
@@ -555,6 +648,15 @@ export function AdminDocumentsPage() {
                           : "hover:bg-slate-50 dark:hover:bg-zinc-800/60"
                       }`}
                     >
+                      <td className="w-12 py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Chọn văn bản ${doc.title}`}
+                          checked={selectedIds.includes(doc.id)}
+                          onChange={() => handleToggleSelect(doc.id)}
+                          className="size-4 rounded border-[#cbd5df] dark:border-zinc-700 text-[#1d4f88] focus:ring-[#1d4f88] cursor-pointer"
+                        />
+                      </td>
                       <td className="py-4 px-5">
                         <div className="min-w-0 break-words font-bold leading-snug text-[#142747] dark:text-zinc-100 text-sm sm:text-base">
                           {doc.title}
@@ -645,6 +747,32 @@ export function AdminDocumentsPage() {
           </div>
         )}
       </div>
+
+      {/* Thanh tác vụ nổi khi chọn nhiều tài liệu */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-[#142747] text-white px-5 py-3 rounded-2xl shadow-xl border border-slate-700 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <span className="text-xs sm:text-sm font-semibold">
+            Đã chọn <strong className="text-sky-300 font-bold">{selectedIds.length}</strong> văn bản
+          </span>
+          <div className="h-4 w-px bg-slate-600" />
+          <button
+            type="button"
+            onClick={() => setSelectedIds([])}
+            className="text-xs font-medium text-slate-300 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            Bỏ chọn
+          </button>
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={handleBulkDelete}
+            className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-colors shadow-sm"
+          >
+            {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            <span>Xóa {selectedIds.length} mục đã chọn</span>
+          </button>
+        </div>
+      )}
 
       {/* Slide-Over Drawer: Chi tiết nguồn văn bản */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>

@@ -31,6 +31,28 @@ export class AuthService {
     return { access_token: this.jwtService.sign(payload), user: publicUser };
   }
 
+  /** Đăng nhập 1-Click tự động phát hành token cho các tài khoản thử nghiệm */
+  async demoLogin(role: string) {
+    const validRoles: Record<string, string> = {
+      admin: 'demo_admin',
+      staff: 'demo_staff',
+      viewer: 'demo_viewer',
+    };
+    const targetUsername = validRoles[role?.toLowerCase()] || 'demo_admin';
+    let user = await this.usersService.findByUsername(targetUsername);
+    if (!user) {
+      const defaultRole = targetUsername === 'demo_admin' ? 'admin' : 'staff';
+      const name =
+        targetUsername === 'demo_admin'
+          ? 'Quản trị viên Demo'
+          : targetUsername === 'demo_staff'
+            ? 'Biên tập viên Demo'
+            : 'Khách trải nghiệm Demo';
+      user = await this.usersService.createDemoUser(targetUsername, defaultRole, name);
+    }
+    return this.login(user);
+  }
+
   sendLogin2FaOtp(userId: number) {
     return this.usersService.requestLoginOtp(userId);
   }

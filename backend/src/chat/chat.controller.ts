@@ -118,6 +118,16 @@ export class ChatController {
     return this.chatService.deleteDocument(name);
   }
 
+  @Post('documents/bulk-delete')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  bulkDeleteDocuments(@Body('ids') ids: string[]) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new HttpException('Danh sách mã tài liệu cần xóa không hợp lệ', HttpStatus.BAD_REQUEST);
+    }
+    return this.chatService.deleteDocuments(ids);
+  }
+
   @Post('ingest-url')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'staff')

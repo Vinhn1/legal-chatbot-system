@@ -84,17 +84,40 @@ def validate_public_url(url: str) -> str:
 
 
 def sanitize_filename(filename: str) -> str:
-    """Bỏ thư mục, dấu chấm kép và ký tự đặc biệt khỏi tên tệp tải lên."""
+    """Loại bỏ đường dẫn thư mục và ký tự nguy hiểm khỏi tên tệp tải lên, bảo toàn ký tự tiếng Việt hợp lệ."""
     if not isinstance(filename, str) or not filename.strip():
         raise ValueError("Tên tệp không hợp lệ.")
-    basename = PurePosixPath(filename.replace("\\", "/")).name
-    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", basename)
-    while ".." in cleaned:
-        cleaned = cleaned.replace("..", ".")
-    cleaned = cleaned.strip("._")[:120]
-    if not cleaned or "." not in cleaned:
+
+    raw = filename.strip()
+    # Khôi phục nếu chuỗi bị mã hóa nhầm từ UTF-8 sang Latin-1 (mojibake từ Multer hoặc header)
+    try:
+        recovered = raw.encode("latin-1").decode("utf-8")
+        if re.search(r"[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]", recovered, re.IGNORECASE):
+            raw = recovered
+    except Exception:
+        pass
+
+    # Chuẩn hóa Unicode về chuẩn dựng sẵn (NFC) để tránh phân rã dấu thanh thành nhiều code points
+    normalized = unicodedata.normalize("NFC", raw)
+    basename = PurePosixPath(normalized.replace("\\", "/")).name
+    if not basename or "." not in basename:
         raise ValueError("Tên tệp không hợp lệ.")
-    return cleaned
+
+    stem, ext = basename.rsplit(".", 1)
+    # Loại bỏ các ký tự nguy hiểm cho hệ thống tệp và shell, bảo toàn toàn bộ chữ cái tiếng Việt có dấu
+    clean_stem = re.sub(r'[\x00-\x1f\x7f/\\:*?"<>|;&$`\'{}\[\]()~!#%^=+]', '_', stem)
+    clean_stem = re.sub(r'\s+', ' ', clean_stem)
+    clean_stem = re.sub(r'_+', '_', clean_stem)
+    while ".." in clean_stem:
+        clean_stem = clean_stem.replace("..", ".")
+    clean_stem = clean_stem.strip(" ._")[:120]
+    if not clean_stem:
+        clean_stem = "tai_lieu"
+
+    clean_ext = re.sub(r"[^A-Za-z0-9]", "", ext).lower()
+    if not clean_ext:
+        raise ValueError("Tên tệp không hợp lệ.")
+    return f"{clean_stem}.{clean_ext}"
 
 
 def validate_upload(data: bytes, filename: str) -> str:

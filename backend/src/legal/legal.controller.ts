@@ -15,6 +15,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { AccessScope, EffectiveStatus, LegalDocumentType } from './entities/legal-document.entity';
 import { LegalUnitType } from './entities/legal-article.entity';
 import { DocumentParserService } from '../document-parser/document-parser.service';
+import { isScannedPdfBuffer } from './pdf-inspector';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -65,6 +66,24 @@ interface AiIngestResult {
   scope: AccessScope;
   units?: AiUnit[];
   [key: string]: unknown;
+}
+
+/**
+ * Khôi phục tên tệp tiếng Việt chuẩn UTF-8 nếu Multer trong Express diễn giải header theo Latin-1.
+ */
+function normalizeUploadedFilename(rawName?: string): string {
+  if (!rawName || typeof rawName !== 'string') return 'document.pdf';
+  const cleanBase = rawName.replace(/\\/g, '/').split('/').pop() || 'document.pdf';
+  try {
+    const recovered = Buffer.from(cleanBase, 'latin1').toString('utf8');
+    // Nếu giải mã ngược lại chứa ký tự tiếng Việt có dấu hợp lệ thì ưu tiên dùng
+    if (/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]/i.test(recovered)) {
+      return recovered;
+    }
+  } catch {
+    // Giữ nguyên cleanBase nếu có lỗi giải mã
+  }
+  return cleanBase;
 }
 
 /**
@@ -163,7 +182,7 @@ export class LegalController {
     const token = this.configService.get<string>('AI_CORE_INTERNAL_TOKEN');
     if (!token) throw new ServiceUnavailableException('Chưa cấu hình xác thực nội bộ AI Core.');
 
-    const filename = file.originalname.replace(/\\/g, '/').split('/').pop();
+    const filename = normalizeUploadedFilename(file.originalname);
     const form = new FormData();
     form.append('file', new Blob([Uint8Array.from(file.buffer)]), filename);
 
@@ -200,11 +219,13 @@ export class LegalController {
       throw new BadRequestException('Thiếu tệp văn bản pháp luật cần OCR.');
     }
 
-    // Ưu tiên sử dụng LlamaParse nếu đã cấu hình API Key và là tệp PDF
+    const filename = normalizeUploadedFilename(file.originalname);
+    // Chỉ kích hoạt LlamaParse khi tệp là PDF dạng scan (không có text layer số hóa)
     const llamaKey = this.configService.get<string>('LLAMA_CLOUD_API_KEY');
-    const isPdf = Boolean(file.originalname?.toLowerCase().endsWith('.pdf') || file.mimetype === 'application/pdf');
-    if (isPdf && llamaKey && llamaKey.trim().length > 0 && this.documentParser) {
-      const detailed = await this.documentParser.parsePdfBufferDetailed(file.buffer, file.originalname);
+    const isPdf = Boolean(filename.toLowerCase().endsWith('.pdf') || file.mimetype === 'application/pdf');
+    const isScanned = isPdf && isScannedPdfBuffer(file.buffer);
+    if (isScanned && llamaKey && llamaKey.trim().length > 0 && this.documentParser) {
+      const detailed = await this.documentParser.parsePdfBufferDetailed(file.buffer, filename);
       return {
         text: detailed.cleanedMarkdown,
         raw_text: detailed.rawMarkdown,
@@ -216,7 +237,6 @@ export class LegalController {
     const token = this.configService.get<string>('AI_CORE_INTERNAL_TOKEN');
     if (!token) throw new ServiceUnavailableException('Chưa cấu hình xác thực nội bộ AI Core.');
 
-    const filename = file.originalname.replace(/\\/g, '/').split('/').pop();
     const form = new FormData();
     form.append('file', new Blob([Uint8Array.from(file.buffer)]), filename);
 
@@ -358,13 +378,14 @@ export class LegalController {
     }
 
     const shouldAutoIngest = autoIngest === undefined || autoIngest === true || autoIngest === 'true';
-    const filename = file.originalname.replace(/\\/g, '/').split('/').pop() || 'document.pdf';
+    const filename = normalizeUploadedFilename(file.originalname);
 
-    // Ưu tiên sử dụng LlamaParse khi đã cấu hình API Key và là tệp PDF
+    // Chỉ kích hoạt LlamaParse khi tài liệu tải lên thực sự là tệp PDF dạng scan
     const llamaKey = this.configService.get<string>('LLAMA_CLOUD_API_KEY');
     const isPdf = Boolean(filename.toLowerCase().endsWith('.pdf') || file.mimetype === 'application/pdf');
+    const isScanned = isPdf && isScannedPdfBuffer(file.buffer);
 
-    if (isPdf && llamaKey && llamaKey.trim().length > 0 && this.documentParser) {
+    if (isScanned && llamaKey && llamaKey.trim().length > 0 && this.documentParser) {
       const jobId = crypto.randomUUID();
       const state: LlamaBackgroundJob = {
         jobId,
@@ -608,15 +629,17 @@ export class LegalController {
     const token = this.configService.get<string>('AI_CORE_INTERNAL_TOKEN');
     if (!token) throw new ServiceUnavailableException('Chưa cấu hình xác thực nội bộ AI Core.');
 
-    const filename = file.originalname.replace(/\\/g, '/').split('/').pop() || 'document.pdf';
+    const filename = normalizeUploadedFilename(file.originalname);
     const llamaKey = this.configService.get<string>('LLAMA_CLOUD_API_KEY');
     const isPdf = Boolean(filename.toLowerCase().endsWith('.pdf') || file.mimetype === 'application/pdf');
 
-    // Nếu là tệp PDF và chưa có văn bản chỉnh sửa thủ công, ưu tiên trích xuất toàn bộ bằng LlamaParse
+    // Chỉ khi là tệp PDF dạng scan (không có text layer số hóa) và chưa có văn bản chỉnh sửa thủ công mới gọi LlamaParse;
+    // các văn bản có text rõ ràng (DOCX, TXT, native PDF) tiếp tục dùng trích xuất nội bộ cũ của AI Core
     let extractedText = overrideText;
     let shouldForceParagraph = forceParagraph === true || forceParagraph === 'true';
 
-    if (!extractedText && isPdf && llamaKey && llamaKey.trim().length > 0 && this.documentParser) {
+    const isScanned = isPdf && isScannedPdfBuffer(file.buffer);
+    if (!extractedText && isScanned && llamaKey && llamaKey.trim().length > 0 && this.documentParser) {
       try {
         const detailed = await this.documentParser.parsePdfBufferDetailed(file.buffer, filename);
         if (detailed.cleanedMarkdown && detailed.cleanedMarkdown.trim().length > 50) {

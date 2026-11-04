@@ -251,7 +251,7 @@ export function ForgotPasswordPage() {
             Khôi phục mật khẩu
           </h1>
           <p className="text-center text-xs text-[#718294] mb-5">
-            Veritas Legal · Cổng khôi phục quyền truy cập an toàn
+            Veritas DocAI · Cổng khôi phục quyền truy cập an toàn
           </p>
 
           <StepDots step={step} />

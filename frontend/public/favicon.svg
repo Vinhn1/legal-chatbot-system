@@ -1,6 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Veritas Legal">
-  <!-- Biểu tượng cán cân pháp luật dùng màu navy của cổng tra cứu. -->
-  <rect width="64" height="64" rx="16" fill="#172554"/>
-  <path d="M32 12v36M17 22h30M32 48H20m12 0h12M17 22l-8 16h16l-8-16Zm30 0-8 16h16l-8-16Z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="32" cy="18" r="3" fill="#fbbf24"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Veritas DocAI">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#142747"/>
+      <stop offset="100%" stop-color="#0b172a"/>
+    </linearGradient>
+    <linearGradient id="lens" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Nền bo góc nhận diện thương hiệu Veritas DocAI -->
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+
+  <!-- Biểu tượng trang tài liệu số hóa với góc gập chuẩn -->
+  <path d="M18 14h18l12 12v24a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V18a4 4 0 0 1 4-4Z" 
+        fill="none" stroke="#f6efe2" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M36 14v12h12" 
+        fill="none" stroke="#f6efe2" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Các dòng text tượng trưng cho nội dung văn bản -->
+  <line x1="22" y1="28" x2="31" y2="28" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="22" y1="36" x2="34" y2="36" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="22" y1="44" x2="28" y2="44" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Kính lúp tra cứu thông minh nổi bật góc dưới phải -->
+  <circle cx="41" cy="41" r="9" fill="#142747" stroke="url(#lens)" stroke-width="3.2"/>
+  <line x1="47.5" y1="47.5" x2="54" y2="54" stroke="url(#lens)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Điểm nhấn ánh sáng phân tích AI trong kính lúp -->
+  <circle cx="38" cy="38" r="2.2" fill="#38bdf8"/>
 </svg>

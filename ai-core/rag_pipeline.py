@@ -509,6 +509,17 @@ class LegalRAG:
             if source not in sources:
                 sources.append(source)
         answer, citations = parse_answer(response_text)
+        # Nếu chưa bóc tách được citations từ JSON nhưng answer hợp lệ, thử phục hồi trích dẫn từ các retrieved chunks
+        if not citations:
+            from legal.citations import extract_json, synthesize_citations_from_context
+            raw_payload = extract_json(response_text)
+            raw_ans = raw_payload.get("answer", "").strip() if isinstance(raw_payload, dict) else ""
+            if raw_ans and raw_ans != REFUSAL:
+                synthesized = synthesize_citations_from_context(raw_ans, chunks)
+                if synthesized:
+                    citations = synthesized
+                    answer = raw_ans
+
         # Không phát hành lập luận hoặc nguồn khi bất kỳ căn cứ gốc nào sai schema.
         if not citations:
             logging.getLogger(__name__).warning("Refusal: parse_answer khong bóc tách duoc citations. Response text: %s", response_text[:300])

@@ -72,23 +72,135 @@ REGEX_EFFECTIVE_DATE = re.compile(
 )
 
 
+def normalize_fallback_title(filename: str) -> str:
+    """Chuẩn hóa tên tệp thành tiêu đề dễ đọc, loại bỏ dấu gạch dưới xộc xệch và viết tắt thô."""
+    raw = Path(filename).stem
+    # Rút gọn các ký tự gạch dưới và gạch ngang thành khoảng trắng
+    cleaned = re.sub(r"[_\-]+", " ", raw).strip()
+    # Chuyển đổi các từ viết tắt tài liệu thông dụng ở đầu chuỗi
+    cleaned = re.sub(r"^(?:BC|Bc)\s+", "Báo cáo ", cleaned)
+    cleaned = re.sub(r"^(?:QC|Qc)\s+", "Quy chế ", cleaned)
+    cleaned = re.sub(r"^(?:QD|Qd)\s+", "Quy định ", cleaned)
+    cleaned = re.sub(r"^(?:HD|Hd)\s+", "Hướng dẫn ", cleaned)
+    cleaned = re.sub(r"^(?:GT|Gt)\s+", "Giáo trình ", cleaned)
+    cleaned = re.sub(r"^(?:ST|St)\s+", "Sổ tay ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned or raw
+
+
+def extract_general_document_info(text: str, filename: str = "") -> tuple[str, str]:
+    """Trích xuất tiêu đề thực tế và đơn vị/cơ quan ban hành cho tài liệu thông thường (báo cáo, quy chế, giáo trình...)."""
+    lines = [clean_legal_line(l) for l in text.splitlines() if clean_legal_line(l)]
+    header_lines = lines[:35]
+
+    detected_authority = ""
+    detected_title = ""
+
+    authority_patterns = [
+        r"^(TRƯỜNG\s+ĐẠI\s+HỌC\s+[^\n]+)",
+        r"^(HỌC\s+VIỆN\s+[^\n]+)",
+        r"^(VIỆN\s+[^\n]+)",
+        r"^(TẬP\s+ĐOÀN\s+[^\n]+)",
+        r"^(TỔNG\s+CÔNG\s+TY\s+[^\n]+)",
+        r"^(CÔNG\s+TY\s+[^\n]+)",
+        r"^(NGÂN\s+HÀNG\s+[^\n]+)",
+        r"^(TRUNG\s+TÂM\s+[^\n]+)",
+    ]
+    for line in header_lines[:15]:
+        for pat in authority_patterns:
+            m = re.match(pat, line, re.IGNORECASE)
+            if m:
+                detected_authority = m.group(1).strip()
+                break
+        if detected_authority:
+            break
+
+    title_keywords = [
+        "BÁO CÁO THỰC TẬP TỐT NGHIỆP",
+        "BÁO CÁO THỰC TẬP",
+        "BÁO CÁO TỔNG KẾT",
+        "BÁO CÁO KẾT QUẢ",
+        "BÁO CÁO",
+        "QUY CHẾ HOẠT ĐỘNG",
+        "QUY CHẾ",
+        "QUY ĐỊNH",
+        "HƯỚNG DẪN",
+        "GIÁO TRÌNH",
+        "SỔ TAY",
+        "KẾ HOẠCH",
+        "ĐỀ ÁN",
+        "ĐỀ TÀI",
+    ]
+    for i, line in enumerate(header_lines[:25]):
+        upper_line = line.upper().strip()
+        if "CỘNG HÒA XÃ HỘI" in upper_line or "ĐỘC LẬP - TỰ DO" in upper_line or "LOGO" in upper_line:
+            continue
+        if detected_authority and upper_line == detected_authority.upper():
+            continue
+
+        for kw in title_keywords:
+            if upper_line.startswith(kw) or upper_line == kw:
+                main_title = line.strip()
+                sub_title = ""
+                if i + 1 < len(header_lines):
+                    candidate_sub = header_lines[i + 1].strip()
+                    upper_sub = candidate_sub.upper()
+                    if not any(stop in upper_sub for stop in ["CÁN BỘ", "GIẢNG VIÊN", "SINH VIÊN", "NGƯỜI THỰC HIỆN", "ĐƠN VỊ", "NGÀY", "THÁNG", "NĂM", "LOGO"]):
+                        if 5 < len(candidate_sub) < 160:
+                            sub_title = candidate_sub
+                if sub_title:
+                    detected_title = f"{main_title}: {sub_title}"
+                else:
+                    detected_title = main_title
+                break
+        if detected_title:
+            break
+
+    return detected_title, detected_authority
+
+
 def readable_document_number(text: str, filename: str, title: str = "") -> str:
     """Tạo mã dễ đọc cho tài liệu không có số hiệu quy phạm chính thức."""
     opening = "\n".join(text.splitlines()[:30])
-    topic_pattern = r"(?im)^\s*(CHUYÊN ĐỀ|SỔ TAY|GIÁO TRÌNH)\s*(\d+|[IVXLCDM]+)?\b"
+    topic_pattern = r"(?im)^\s*(CHUYÊN ĐỀ|SỔ TAY|GIÁO TRÌNH|BÁO CÁO|QUY CHẾ|QUY ĐỊNH|HƯỚNG DẪN|KẾ HOẠCH|ĐỀ ÁN)\s*(\d+|[IVXLCDM]+)?\b"
     heading = (re.search(topic_pattern, opening) or re.search(topic_pattern, title)
                or re.search(topic_pattern, Path(filename).stem.replace("_", " ")))
-    kind = {"CHUYÊN ĐỀ": "CD", "SỔ TAY": "ST", "GIÁO TRÌNH": "GT"}.get(
-        heading.group(1).upper() if heading else "", "TL")
+    kind_map = {
+        "CHUYÊN ĐỀ": "CD",
+        "SỔ TAY": "ST",
+        "GIÁO TRÌNH": "GT",
+        "BÁO CÁO": "BC",
+        "QUY CHẾ": "QC",
+        "QUY ĐỊNH": "QD",
+        "HƯỚNG DẪN": "HD",
+        "KẾ HOẠCH": "KH",
+        "ĐỀ ÁN": "DA",
+    }
+    stem_upper = Path(filename).stem.upper()
+    default_kind = "TL"
+    if stem_upper.startswith(("BC_", "BC-")):
+        default_kind = "BC"
+    elif stem_upper.startswith(("QC_", "QC-")):
+        default_kind = "QC"
+    elif stem_upper.startswith(("QD_", "QD-")):
+        default_kind = "QD"
+    elif stem_upper.startswith(("HD_", "HD-")):
+        default_kind = "HD"
+
+    kind = kind_map.get(heading.group(1).upper() if heading else "", default_kind)
     if heading and heading.group(2):
         number = heading.group(2)
         return f"{kind}-{int(number):02d}" if number.isdigit() else f"{kind}-{number.upper()}"
-    label = Path(filename).stem
+
+    label = title or Path(filename).stem
     if label.lower() in {"web_document", "pasted_text", "document", "upload"}:
-        label = title or "TAI-LIEU"
+        label = "TAI-LIEU"
+
     ascii_label = unicodedata.normalize("NFKD", label.replace("Đ", "D").replace("đ", "d"))
     slug = re.sub(r"[^A-Z0-9]+", "-", ascii_label.encode("ascii", "ignore").decode().upper()).strip("-")
-    return f"{kind}-{slug[:48].strip('-') or 'TAI-LIEU'}"
+    if slug.startswith(f"{kind}-"):
+        return slug[:48].strip("-")
+    return f"{kind}-{slug[:44].strip('-') or 'TAI-LIEU'}"
 
 
 def _has_vietnamese_marks(value: str) -> bool:
@@ -271,6 +383,13 @@ def extract_metadata_heuristic(text: str, filename: str = "") -> dict[str, Any]:
             metadata["document_type"] = "law"
         else:
             metadata["document_type"] = _infer_document_type_from_hint(filename, metadata["doc_number"])
+        # Nếu chưa tìm thấy tiêu đề theo chuẩn VBQPPL, trích xuất tiêu đề tài liệu thông thường từ nội dung
+        if not metadata["doc_title"]:
+            gen_title, gen_issuer = extract_general_document_info(text, filename)
+            if gen_title:
+                metadata["doc_title"] = gen_title
+            if gen_issuer and not metadata["issuing_authority"]:
+                metadata["issuing_authority"] = gen_issuer
 
     # Đánh giá độ tin cậy của tầng heuristic
     has_number = bool(metadata["doc_number"])
@@ -357,9 +476,9 @@ def auto_extract_metadata(data: bytes, filename: str) -> dict[str, Any]:
     """Hàm điều phối trích xuất thông tin tự động toàn diện cho tệp tải lên (PDF, DOCX, TXT)."""
     text = extract_text(data, filename)
     if not text.strip():
-        fallback_title = filename.rsplit(".", 1)[0]
+        fallback_title = normalize_fallback_title(filename)
         return {
-            "doc_number": readable_document_number("", filename),
+            "doc_number": readable_document_number("", filename, fallback_title),
             "doc_title": fallback_title,
             "document_type": _infer_document_type_from_hint(filename),
             "issuing_authority": "",
@@ -409,8 +528,10 @@ def auto_extract_metadata(data: bytes, filename: str) -> dict[str, Any]:
         return combined
 
     # Bước 3: Dự phòng cuối cùng nếu LLM không khả dụng hoặc lỗi
-    fallback_title = heuristic_res.get("doc_title") or filename.rsplit(".", 1)[0]
-    heuristic_res["doc_title"] = fallback_title
+    raw_title = heuristic_res.get("doc_title") or normalize_fallback_title(filename)
+    fallback_title = re.sub(r"[_\-]+", " ", raw_title).strip()
+    fallback_title = re.sub(r"\s+", " ", fallback_title)
+    heuristic_res["doc_title"] = fallback_title or raw_title
     if not heuristic_res.get("doc_number"):
         heuristic_res["doc_number"] = readable_document_number(text, filename, fallback_title)
     if not heuristic_res.get("issued_date"):

@@ -31,6 +31,20 @@ def resolve_snippet(snippet: str, document: str) -> str | None:
     if match:
         return match.group(0)
 
+    # Thử đối chiếu chuẩn hóa khoảng trắng toàn văn bản
+    norm_doc = " ".join(document.split())
+    norm_target = " ".join(target.split())
+    if norm_target and norm_target in norm_doc:
+        idx = norm_doc.index(norm_target)
+        # Tìm lại đoạn tương ứng trong document
+        words = norm_target.split()
+        if len(words) >= 2:
+            first_w, last_w = re.escape(words[0]), re.escape(words[-1])
+            wide_pattern = rf"{first_w}[\s\S]*?{last_w}"
+            wide_match = re.search(wide_pattern, document)
+            if wide_match:
+                return wide_match.group(0)
+
     # Nếu mô hình nối hai mệnh đề bằng dấu '...' hoặc ';', thử khớp mệnh đề nguyên văn đủ dài (>= 4 từ và >= 16 ký tự)
     segments = [seg.strip(' "\'“”‘’….,;:-') for seg in re.split(r"(?:\.\.\.|…|;|\n)", target) if seg.strip()]
     for seg in sorted(segments, key=len, reverse=True):
@@ -61,7 +75,17 @@ def verify_and_repair_citation(
     cid = item.get("chunk_id", "").strip()
     chunk = allowed.get(cid) or sibling_lookup.get(cid)
     if not chunk:
-        return None
+        if not cid:
+            item_doc = normalize_doc_number(item.get("doc_number", ""))
+            item_art = normalize_unit_number(re.sub(r"^\s*điều\s+", "", item.get("article", ""), flags=re.IGNORECASE))
+            for c in allowed.values():
+                c_doc = normalize_doc_number(str(c.metadata.get("doc_number", "")))
+                c_art = normalize_unit_number(str(c.metadata.get("article_number", "")))
+                if item_doc and c_doc and item_doc == c_doc and item_art and c_art and item_art == c_art:
+                    chunk = c
+                    break
+        if not chunk:
+            return None
 
     base_doc = _base_document(chunk)
     siblings = getattr(chunk, "siblings", ()) or ()
@@ -203,7 +227,7 @@ def verify_and_repair_citation(
 
 
 def extract_json(raw: str) -> dict | None:
-    """Đọc đối tượng JSON đầu tiên, kể cả khi có markdown fence hoặc ký tự thừa."""
+    """Đọc đối tượng JSON đầu tiên, kể cả khi có markdown fence, ký tự thừa hoặc ngắt đuôi nhẹ."""
     if not isinstance(raw, str):
         return None
     cleaned = re.sub(r"^\s*```(?:json)?\s*|\s*```\s*$", "", raw.strip(), flags=re.I)
@@ -217,6 +241,18 @@ def extract_json(raw: str) -> dict | None:
             continue
         if isinstance(value, dict):
             return value
+
+    # Khắc phục lỗi JSON bị thiếu dấu đóng ngoặc khi phản hồi dài
+    if "{" in cleaned and '"answer"' in cleaned:
+        start_idx = cleaned.find("{")
+        candidate = cleaned[start_idx:].strip()
+        for suffix in ['"}]}', '"}]', '"]}', '"}', '}', ']}']:
+            try:
+                val = json.loads(candidate + suffix)
+                if isinstance(val, dict) and "answer" in val:
+                    return val
+            except Exception:
+                pass
     return None
 
 
@@ -242,12 +278,55 @@ def normalize_citations(value: object) -> list[dict[str, str]]:
     return normalized
 
 
+def synthesize_citations_from_context(answer: str, chunks: list[RetrievedChunk]) -> list[dict[str, str]]:
+    """Tự động khôi phục danh sách trích dẫn từ các chunk được truy xuất nếu mô hình trả lời đúng nhưng thiếu mảng JSON citations."""
+    if not answer or not chunks:
+        return []
+    synthesized = []
+    seen = set()
+
+    # Tìm các số Điều được nêu trong bài viết, ví dụ [Điều 46], [Điều 2], Điều 46
+    art_matches = re.findall(r"(?:\[|\b)Điều\s*(\d+[a-zA-Z]?)(?:\s*,\s*Khoản\s*(\d+))?[^\]\n]*?(?:\]|\b)", answer, flags=re.IGNORECASE)
+    mentioned_articles = {normalize_unit_number(m[0]) for m in art_matches if m[0]}
+
+    for chunk in chunks:
+        cid = chunk.chunk_id
+        if cid in seen:
+            continue
+        c_art = normalize_unit_number(str(chunk.metadata.get("article_number") or ""))
+        c_clause = normalize_unit_number(str(chunk.metadata.get("clause_number") or ""))
+        c_doc = str(chunk.metadata.get("doc_number") or "").strip()
+
+        should_include = False
+        if c_art and c_art in mentioned_articles:
+            should_include = True
+        elif c_doc and c_doc in answer:
+            should_include = True
+
+        if should_include:
+            base_doc = _base_document(chunk)
+            lines = [line.strip() for line in base_doc.split("\n") if len(line.strip()) >= 15]
+            snippet = lines[-1][:100] if lines else base_doc[:80].strip()
+            if snippet:
+                seen.add(cid)
+                stored_art = str(chunk.metadata.get("article_number") or "").strip()
+                stored_clause = str(chunk.metadata.get("clause_number") or "").strip()
+                synthesized.append({
+                    "chunk_id": cid,
+                    "doc_number": c_doc,
+                    "article": f"Điều {stored_art}" if stored_art else "",
+                    "clause": f"Khoản {stored_clause}" if stored_clause else "",
+                    "snippet": snippet,
+                    "source_url": str(chunk.metadata.get("source_url") or "").strip(),
+                })
+    return synthesized
+
+
 def parse_answer(raw: str) -> tuple[str, list[dict[str, str]]]:
     """Từ chối phản hồi sai schema hoặc không có trích dẫn làm căn cứ."""
     payload = extract_json(raw)
     if not payload or not isinstance(payload.get("answer"), str) or not isinstance(payload.get("citations"), list):
         return REFUSAL, []
-    # Giữ từng citation gốc đến hết xác minh; khử trùng sớm có thể che căn cứ sai.
     citations = []
     for item in payload["citations"]:
         normalized = normalize_citations([item])
