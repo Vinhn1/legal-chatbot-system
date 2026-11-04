@@ -15,6 +15,7 @@ import {
   showVeritasToast,
   triggerBrowserSystemNotification,
 } from "../services/veritasToast";
+import { generateUUID } from "../utils/uuid";
 import {
   IngestJobsContext,
   type AdminNotificationItem,
@@ -117,7 +118,7 @@ function applyOcrOutputToStoredReviewFile(
   const baseResult: Result = target.result ||
     fallbackResult || {
       status: "needs_review",
-      doc_id: crypto.randomUUID(),
+      doc_id: generateUUID(),
       doc_title: target.file.name.replace(/\.[^.]+$/, ""),
       doc_number: "",
       issuing_authority: "",
@@ -219,7 +220,7 @@ export function IngestJobsProvider({ children }: { children: ReactNode }) {
   const appendNotification = useCallback((entry: Omit<AdminNotificationItem, "id" | "read" | "createdAt">) => {
     const created: AdminNotificationItem = {
       ...entry,
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       read: false,
       createdAt: Date.now(),
     };
@@ -409,7 +410,7 @@ export function IngestJobsProvider({ children }: { children: ReactNode }) {
   const startBackgroundOcrJob = useCallback(
     async (file: File, options?: StartBackgroundOcrOptions): Promise<string> => {
       const autoIngest = options?.autoIngest ?? true;
-      const tempId = `uploading-${crypto.randomUUID()}`;
+      const tempId = `uploading-${generateUUID()}`;
       const now = Date.now();
 
       requestBrowserNotificationPermissionIfNeeded();

@@ -39,6 +39,7 @@ import {
   syncFilesStorage,
 } from "../../services/ingestStorage";
 import { showVeritasToast } from "../../services/veritasToast";
+import { generateUUID } from "../../utils/uuid";
 
 export type Mode = "file" | "text" | "url";
 export type Result = {
@@ -350,7 +351,7 @@ export function AdminIngestPage() {
       if (!/\.(pdf|docx|txt)$/i.test(file.name) || file.size === 0 || file.size > 15 * 1024 * 1024) {
         invalid.push(file.name);
       } else if (!files.some((item) => item.file.name === file.name && item.file.size === file.size)) {
-        accepted.push({ id: crypto.randomUUID(), file, state: "ready" });
+        accepted.push({ id: generateUUID(), file, state: "ready" });
       }
     }
     setFiles((current) => [...current, ...accepted]);

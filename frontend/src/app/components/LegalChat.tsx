@@ -3,6 +3,7 @@ import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 import axios from "axios";
 import { ArrowUpRight, CheckCircle2, Info, RotateCcw, RotateCw, Send, X } from "lucide-react";
 import { API_BASE } from "../../config";
+import { generateUUID } from "../utils/uuid";
 import type { LegalCitation } from "./CitationInspector";
 import { CitationViewer } from "./CitationViewer";
 import { RobotAvatar } from "./RobotAvatar";
@@ -350,7 +351,7 @@ export function LegalChat({
     setQuestion("");
     clearAvatarTimers();
     setAvatarState("searching");
-    const pendingId = crypto.randomUUID();
+    const pendingId = generateUUID();
     const currentTime = formatCurrentTime();
     setMessages(previous => [...previous, { id: pendingId, role: "user", text, createdAt: currentTime }]);
     try {
@@ -358,7 +359,7 @@ export function LegalChat({
       session.current = { sessionId: response.data.sessionId, sessionToken: response.data.sessionToken };
       const answer = (typeof response.data?.answer === "string" ? response.data.answer.trim() : "") || "Chưa tìm thấy thông tin trong bộ dữ liệu hiện có.";
       const citations = Array.isArray(response.data?.citations) ? response.data.citations as LegalCitation[] : [];
-      const botId = crypto.randomUUID();
+      const botId = generateUUID();
       setLatestBotMessageId(botId);
       setMessages(previous => [...previous, { id: botId, role: "bot", text: answer, citations, createdAt: formatCurrentTime() }]);
 
